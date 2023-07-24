@@ -1,4 +1,5 @@
 /* @refresh reload */
+/* @jsxImportSource solid-js */
 // @ts-check
 import { Meteor } from 'meteor/meteor'
 import { Tracker } from 'meteor/tracker'
@@ -22,11 +23,18 @@ function app() {
 
 	function sendMessage(e) {
 		e.preventDefault()
+
+		window.controlSpeech('stop')
+
 		console.log('send message to server', input.value)
 		Meteor.call('sendMessage', input.value, (error, result) => {
 			if (error) throw error
 			console.log('got messge from server')
 			state.response = result
+
+			const textarea = document.querySelector('.textEntry.Luke')
+			textarea.value = result
+			window.controlSpeech('play')
 		})
 		input.value = ''
 	}
@@ -38,12 +46,12 @@ function app() {
 		<div>
 			Log in to chat:
 			{loginBox}
-			<div>{state.response}</div>
 			<Show when={state.user}>
 				<form onsubmit={sendMessage}>
 					<input ref={input} type="text" />
 				</form>
 			</Show>
+			<div>{state.response}</div>
 		</div>
 	)
 
@@ -51,5 +59,5 @@ function app() {
 }
 
 Meteor.startup(() => {
-	document.body.append(app())
+	document.getElementById('ui').prepend(app())
 })
