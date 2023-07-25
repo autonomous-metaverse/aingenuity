@@ -216,16 +216,22 @@
 		main()
 
 		async function main() {
-			// This is served by webpack-dev-server and comes from demo-credentials.js in the repo root
-			const config = await (await fetch('/devConfig.json')).json()
+			// Wait for Meteor auth and API to be ready.
+			await new Promise(r => Meteor.startup(r))
+
+			// FIXME: This key is *public* (visible on the client side) for now,
+			// but we want to keep it on the server side so malicious users
+			// don't steal it and make their own apps with it while we pay for
+			// it. Once we switch it to the server, we want to delete the
+			// current key and make a new one.
+			const cognitoIdentityPoolId = Meteor.settings.public.AWS_SUMERIAN_KEY
+
 			// Parse the region out of the cognito Id
-			const region = config.cognitoIdentityPoolId.split(':')[0]
+			const region = cognitoIdentityPoolId.split(':')[0]
 
 			// Initialize AWS and create Polly service objects
 			window.AWS.config.region = region
-			window.AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-				IdentityPoolId: config.cognitoIdentityPoolId,
-			})
+			window.AWS.config.credentials = new AWS.CognitoIdentityCredentials({ IdentityPoolId: cognitoIdentityPoolId })
 			const polly = new AWS.Polly()
 			const presigner = new AWS.Polly.Presigner()
 			const speechInit = HOST.aws.TextToSpeechFeature.initializeService(polly, presigner, window.AWS.VERSION)

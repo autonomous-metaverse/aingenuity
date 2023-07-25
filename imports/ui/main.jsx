@@ -29,7 +29,7 @@ function app() {
 		console.log('send message to server', input.value)
 		Meteor.call('sendMessage', input.value, (error, result) => {
 			if (error) throw error
-			console.log('got messge from server')
+			console.log('got messge from server', result)
 			state.response = result
 
 			const textarea = document.querySelector('.textEntry.Luke')

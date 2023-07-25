@@ -1,0 +1,6 @@
+{
+	"OPENAI_TOKEN": "<paste key here>",
+	"public": {
+		"AWS_SUMERIAN_KEY": "<paste key here>"
+	}
+}
