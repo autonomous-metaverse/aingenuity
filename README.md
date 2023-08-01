@@ -14,10 +14,18 @@ FIXME: Get a new AWS key (it may be leaked already) and make it not public withi
 
 # Run:
 
-Once keys are in `settings.json`, the app will function. Run it with:
+Once keys are in `settings.json`, the app will function.
 
+First install dependencies:
+
+```sh
+npm install
 ```
+
+Then run it with:
+
+```sh
 npm start
 ```
 
-This runs the full-stack Meteor app in dev mode.
+This runs the full-stack Meteor app in dev mode: it will reload upon file changes.
