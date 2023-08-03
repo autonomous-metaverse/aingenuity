@@ -9,7 +9,7 @@ import { createMutable } from 'solid-js/store'
 import { Show, batch } from 'solid-js'
 // import {} from "../../server/methods";
 
-function app() {
+function App() {
 	const state = createMutable({ response: '', user: null, userId: null })
 
 	Tracker.autorun(() => {
@@ -32,7 +32,8 @@ function app() {
 			console.log('got messge from server', result)
 			state.response = result
 
-			const textarea = document.querySelector('.textEntry.Luke')
+			const el = document.querySelector('auto-app')
+			const textarea = el.shadowRoot.querySelector('.textEntry.Luke')
 			textarea.value = result
 			window.controlSpeech('play')
 		})
@@ -42,8 +43,11 @@ function app() {
 	let loginBox = <div></div>
 	Blaze.render(Template.loginButtons, loginBox)
 
+	const style = <style>/*css*/``</style>
+
 	const div = (
 		<div>
+			{style}
 			Log in to chat:
 			{loginBox}
 			<Show when={state.user}>
@@ -58,6 +62,8 @@ function app() {
 	return div
 }
 
-Meteor.startup(() => {
-	document.getElementById('ui').prepend(app())
+Meteor.startup(async () => {
+	await customElements.whenDefined('auto-app')
+	const el = document.querySelector('auto-app')
+	el.append(App())
 })
