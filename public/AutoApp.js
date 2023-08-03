@@ -3,6 +3,12 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/exampl
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/loaders/GLTFLoader.js'
 //   import * as HOST from "../src/three.js/index.js";
 
+import { defineElements } from 'lume'
+
+defineElements()
+
+const useLumeCamera = true
+
 const renderFn = []
 const speakers = new Map([
 	['Luke', undefined],
@@ -18,10 +24,10 @@ class AutoApp extends HTMLElement {
 	async connectedCallback() {
 		this.makeDOM()
 
-		/////////////////////////////////////////////////////////////////////
-
 		// Wait for Meteor auth and API to be ready.
 		await new Promise(r => Meteor.startup(r))
+
+		/////////////////////////////////////////////////////////////////////
 
 		// FIXME: This key is *public* (visible on the client side) for now,
 		// but we want to keep it on the server side so malicious users
@@ -177,6 +183,27 @@ class AutoApp extends HTMLElement {
 
 	makeDOM() {
 		this.shadowRoot.innerHTML = /*html*/ `
+			<div id="lume">
+				<lume-scene webgl>
+
+					<!--
+					Align the Lume scene with the Sumerian Threejs scene.
+					We may remove this when we update Lume so its default origin aligns with Three.js.
+					-->
+					<lume-element3d align-point="0.5 0.5">
+
+						<lume-camera-rig initial-distance="3" min-distance="1" max-distance="100" dolly-speed="0.03" position="0 -0.65 0"></lume-camera-rig>
+
+						<!--<lume-point-light position="300 300 300"></lume-point-light>-->
+
+						<lume-box position="-2 0 0" size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="pink"></lume-box>
+						<lume-sphere position="2 0 0" size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="skyblue"></lume-sphere>
+
+					</lume-element3d>
+
+				</lume-scene>
+			</div>
+
 			<div id="scene">
 				<!-- The Three.js scene canvas gets appended here. -->
 			</div>
@@ -240,6 +267,10 @@ class AutoApp extends HTMLElement {
 			</div>
 
 			<style>
+				:host {
+					display: block;
+				}
+
 				.tab {
 					background-color: rgb(219, 219, 219);
 					padding-bottom: 0px;
@@ -281,15 +312,27 @@ class AutoApp extends HTMLElement {
 					touch-action: none;
 				}
 
-				#scene,
+				#lume {
+					position: absolute;
+					width: 100%;
+					height: 100%;
+
+					/** Make the Lume scene visibly hidden because we're rendering with the Sumerian scene. */
+					opacity: 0.000001;
+
+					${useLumeCamera ? '' : 'display: none;'}
+				}
+
 				#ui {
 					position: absolute;
-					top: 0;
-					left: 0;
+					top: 10px;
+					left: 10px;
+					border-radius: 10px;
 				}
 
 				#ui {
 					padding: 10px;
+					background: rgba(0, 0, 0, 0.8);
 				}
 
 				#loadScreen {
@@ -350,9 +393,16 @@ class AutoApp extends HTMLElement {
 	createScene() {
 		// Base scene
 		const scene = new THREE.Scene()
-		const clock = new THREE.Clock()
 		scene.background = new THREE.Color(0x33334d)
-		scene.fog = new THREE.Fog(0x33334d, 0, 10)
+		// scene.fog = new THREE.Fog(0x33334d, 0, 10)
+
+		// Render one scene in the other
+		this.lumeScene = this.shadowRoot?.querySelector('lume-scene')
+		scene.children.push(this.lumeScene.three)
+		// (rendering the Sumerian scene in the Lume scene doesn't work currently due to version differences of Threejs libs)
+		// this.lumeScene.three.children.push(scene)
+
+		const clock = new THREE.Clock()
 
 		// Renderer
 		const renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -383,8 +433,9 @@ class AutoApp extends HTMLElement {
 			0.1,
 			1000,
 		)
+		camera.position.set(0, 0.75, 3.1)
 		const controls = new OrbitControls(camera, renderer.domElement)
-		camera.position.set(0, 1.4, 3.1)
+		controls.enableDamping = true
 		controls.target = new THREE.Vector3(0, 0.8, 0)
 		controls.screenSpacePanning = true
 		controls.update()
@@ -405,7 +456,13 @@ class AutoApp extends HTMLElement {
 				fn()
 			})
 
-			renderer.render(scene, camera)
+			if (useLumeCamera) {
+				// Render with Lume's camera
+				renderer.render(scene, this.lumeScene?.camera.three)
+			} else {
+				// Render with the original Sumerian camera.
+				renderer.render(scene, camera)
+			}
 
 			requestAnimationFrame(render)
 		}
@@ -449,7 +506,7 @@ class AutoApp extends HTMLElement {
 		ground.receiveShadow = true
 		scene.add(ground)
 
-		return { scene, camera, clock }
+		return { scene, camera: useLumeCamera ? this.lumeScene?.camera.three : camera, clock }
 	}
 
 	// Load character model and animations

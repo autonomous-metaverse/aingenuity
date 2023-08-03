@@ -1,0 +1,7 @@
+{
+	"name": "unnamed-experiment",
+	"type": "module",
+	"dependencies": {
+		"lume": "^0.3.0-alpha.27"
+	}
+}
