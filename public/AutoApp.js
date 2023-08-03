@@ -24,6 +24,14 @@ class AutoApp extends HTMLElement {
 	async connectedCallback() {
 		this.makeDOM()
 
+		// Increment rotation by a small number of degrees every frame.
+		const box = this.shadowRoot?.querySelector('lume-box')
+		box.rotation = (x, y, z) => [x, y + 0.2, z]
+
+		// Move the sphere around in a circle based on time.
+		const sphere = this.shadowRoot?.querySelector('lume-sphere')
+		sphere.position = (x, y, z, t) => [0.1 * Math.sin(t * 0.005), y, 0.1 * Math.cos(t * 0.005)]
+
 		// Wait for Meteor auth and API to be ready.
 		await new Promise(r => Meteor.startup(r))
 
@@ -182,6 +190,7 @@ class AutoApp extends HTMLElement {
 	}
 
 	makeDOM() {
+		const el = document.createElement('lume-directional-light')
 		this.shadowRoot.innerHTML = /*html*/ `
 			<div id="lume">
 				<lume-scene webgl>
@@ -192,12 +201,26 @@ class AutoApp extends HTMLElement {
 					-->
 					<lume-element3d align-point="0.5 0.5">
 
-						<lume-camera-rig initial-distance="3" min-distance="1" max-distance="100" dolly-speed="0.03" position="0 -0.65 0"></lume-camera-rig>
+						<lume-camera-rig initial-distance="3" min-distance="1" max-distance="100" dolly-speed="0.03" position="0 -0.65"></lume-camera-rig>
 
-						<!--<lume-point-light position="300 300 300"></lume-point-light>-->
+						<lume-directional-light
+							position="0 -4 5"
+							cast-shadow=true
+							shadow-map-width="1024"
+							shadow-map-height="1024"
+							shadow-camera-top="2.5"
+							shadow-camera-bottom="-2.5"
+							shadow-camera-left="-2.5"
+							shadow-camera-right="2.5"
+							shadow-camera-near="0.1"
+							shadow-camera-far="40"
+						></lume-directional-light>
 
-						<lume-box position="-2 0 0" size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="pink"></lume-box>
-						<lume-sphere position="2 0 0" size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="skyblue"></lume-sphere>
+						<lume-box position="-2" rotation="0 -30" size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="pink"></lume-box>
+
+						<lume-element3d position="2">
+							<lume-sphere size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="skyblue"></lume-sphere>
+						</lume-element3d>
 
 					</lume-element3d>
 
@@ -394,7 +417,7 @@ class AutoApp extends HTMLElement {
 		// Base scene
 		const scene = new THREE.Scene()
 		scene.background = new THREE.Color(0x33334d)
-		// scene.fog = new THREE.Fog(0x33334d, 0, 10)
+		scene.fog = new THREE.Fog(0x33334d, 0, 10)
 
 		// Render one scene in the other
 		this.lumeScene = this.shadowRoot?.querySelector('lume-scene')
@@ -474,25 +497,6 @@ class AutoApp extends HTMLElement {
 		hemiLight.position.set(0, 1, 0)
 		hemiLight.intensity = 0.6
 		scene.add(hemiLight)
-
-		const dirLight = new THREE.DirectionalLight(0xffffff)
-		dirLight.position.set(0, 5, 5)
-
-		dirLight.castShadow = true
-		dirLight.shadow.mapSize.width = 1024
-		dirLight.shadow.mapSize.height = 1024
-		dirLight.shadow.camera.top = 2.5
-		dirLight.shadow.camera.bottom = -2.5
-		dirLight.shadow.camera.left = -2.5
-		dirLight.shadow.camera.right = 2.5
-		dirLight.shadow.camera.near = 0.1
-		dirLight.shadow.camera.far = 40
-		scene.add(dirLight)
-
-		const dirLightTarget = new THREE.Object3D()
-		dirLight.add(dirLightTarget)
-		dirLightTarget.position.set(0, -0.5, -1.0)
-		dirLight.target = dirLightTarget
 
 		// Environment
 		const groundMat = new THREE.MeshStandardMaterial({
