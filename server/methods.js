@@ -11,6 +11,8 @@ const openai = new OpenAIApi(configuration)
 
 let i = 0
 
+// Basically Meteor's RPC feature. Arguments can be EJSON (JSON with extensions
+// like typed binary arrays).
 Meteor.methods({
 	async sendMessage(msg) {
 		console.log('sendMessage on server?', msg)
@@ -39,5 +41,9 @@ Meteor.methods({
 		} catch (e) {
 			return 'Error 500: something went wrong.'
 		}
+	},
+
+	sendAudio(msg) {
+		console.log('audio?', msg)
 	},
 })

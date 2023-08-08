@@ -5,6 +5,17 @@ import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/
 
 import { defineElements } from 'lume'
 
+import { Recorder } from './audio.js'
+import { Meteor } from 'meteor/meteor'
+
+const rec = new Recorder()
+
+rec.recordAudio(async blob => {
+	Meteor.call('sendAudio', { audio: new Uint8Array(await blob.arrayBuffer()) })
+})
+
+setTimeout(() => rec.stop(), 4000)
+
 defineElements()
 
 const useLumeCamera = true
