@@ -1,7 +1,4 @@
 // @ts-check
-import { Meteor } from 'meteor/meteor'
-
-console.log('Meteor.call?', Meteor.call)
 
 export function createAudioElement(blobUrl) {
 	const anchor = document.createElement('a')
@@ -24,11 +21,17 @@ export function createAudioElement(blobUrl) {
 // convert blob to URL so it can be assigned to a audio src attribute
 // createAudioElement(URL.createObjectURL(blob))
 
+// Recording audio guide: https://air.ghost.io/recording-to-an-audio-file-using-html5-and-js/
+
 export class Recorder {
+	/** @type {MediaStream} */
 	stream
+
+	/** @type {MediaRecorder} */
 	recorder
 
 	// store streaming data chunks in array
+	/** @type {Blob[]} */
 	chunks = []
 
 	async init() {
@@ -58,6 +61,7 @@ export class Recorder {
 
 	stop() {
 		this.recorder.stop()
+		this.stream.getTracks().forEach(track => track.stop())
 	}
 
 	/** @param {(blob: Blob) => void} onFinished */

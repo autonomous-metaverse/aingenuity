@@ -1,9 +1,8 @@
-export let Meteor = globalThis.Meteor
-export let Blaze = globalThis.Blaze
-export let Tracker = globalThis.Tracker
-export let Template = globalThis.Template
+export let Meteor = globalThis.Meteor // Only Meteor is initially available
 
-console.log('got stuff?', Meteor, Blaze, Tracker, Template)
+export let Blaze
+export let Tracker
+export let Template
 
 const promises = [new Promise(r => Meteor.startup(r))]
 
@@ -15,10 +14,7 @@ promises.push(
 	new Promise(resolve =>
 		setTimeout(function waitForGlobals() {
 			if (globalThis.Tracker) {
-				console.log('ADD GLOBALS')
-
 				// Add any Meteor APIs as needed here, and in imports/ui/main.jsx
-				Meteor = globalThis.Meteor
 				Blaze = globalThis.Blaze
 				Tracker = globalThis.Tracker
 				Template = globalThis.Template

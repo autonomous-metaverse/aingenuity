@@ -5,16 +5,7 @@ import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/
 
 import { defineElements } from 'lume'
 
-import { Recorder } from './audio.js'
 import { Meteor } from 'meteor/meteor'
-
-const rec = new Recorder()
-
-rec.recordAudio(async blob => {
-	Meteor.call('sendAudio', { audio: new Uint8Array(await blob.arrayBuffer()) })
-})
-
-setTimeout(() => rec.stop(), 4000)
 
 defineElements()
 
@@ -25,6 +16,8 @@ const speakers = new Map([
 	['Luke', undefined],
 	['Alien', undefined],
 ])
+
+export let controlSpeech = null
 
 class AutoApp extends HTMLElement {
 	constructor() {
@@ -869,12 +862,16 @@ class AutoApp extends HTMLElement {
 			button.onclick = () => controlSpeech(id)
 		})
 
-		/** @param {'play' | 'pause' | 'resume' | 'stop'} action */
-		// TODO this is temporarily global to temporarily make it accessible in main.jsx. Needs re-organization.
-		window.controlSpeech = action => {
+		/**
+		 * @param {'play' | 'pause' | 'resume' | 'stop'} action
+		 * @param {string=} text The text to play. If not given, plays whatever
+		 * text was given last time.
+		 */
+		controlSpeech = (action, text) => {
 			const { name, host } = this.getCurrentHost(speakers)
-			const speechInput = this.shadowRoot.querySelector(`.textEntry.${name}`)
-			host.TextToSpeechFeature[action](speechInput.value)
+			const textarea = this.shadowRoot.querySelector(`.textEntry.${name}`)
+			if (text) textarea.value = text
+			host.TextToSpeechFeature[action](textarea.value)
 		}
 
 		// Update the text area text with gesture SSML markup when clicked

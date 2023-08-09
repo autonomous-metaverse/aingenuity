@@ -8,10 +8,8 @@ import { createMutable } from 'solid-js/store'
 import { batch } from 'solid-js'
 import html from 'solid-js/html'
 import './AutoApp.js'
-
-// setTimeout(() => {
-console.log('stuff?', globalThis.Tracker, Tracker)
-// })
+import { Recorder } from './audio.js'
+import { controlSpeech } from './AutoApp.js'
 
 function App() {
 	const state = createMutable({ response: '', user: null, userId: null })
@@ -28,24 +26,39 @@ function App() {
 	function sendMessage(e) {
 		e.preventDefault()
 
-		window.controlSpeech('stop')
+		controlSpeech('stop')
 
-		console.log('send message to server', input.value)
 		Meteor.call('sendMessage', input.value, (error, result) => {
 			if (error) throw error
-			console.log('got messge from server', result)
-			state.response = result
-
-			const el = document.querySelector('auto-app')
-			const textarea = el.shadowRoot.querySelector('.textEntry.Luke')
-			textarea.value = result
-			window.controlSpeech('play')
+			textToSpeech(result)
 		})
 		input.value = ''
 	}
 
 	let loginBox = html`<div></div>`
 	Blaze.render(Template.loginButtons, loginBox)
+
+	function textToSpeech(text) {
+		state.response = text
+		controlSpeech('play', text)
+	}
+
+	async function recordAndSendAudio() {
+		controlSpeech('stop')
+
+		const rec = new Recorder()
+
+		// Stop after 4 seconds (TODO detect the audio to capture between silences)
+		setTimeout(() => rec.stop(), 4000)
+
+		/** @type {Blob} */
+		const blob = await new Promise(r => rec.recordAudio(r))
+
+		Meteor.call('sendAudio', { audio: new Uint8Array(await blob.arrayBuffer()) }, (error, result) => {
+			if (error) throw error
+			textToSpeech(result)
+		})
+	}
 
 	const div = html`
 		<div>
@@ -57,13 +70,7 @@ function App() {
 
 			<div>${() => state.response}</div>
 
-			<button
-				onclick=${() => {
-					console.log('click')
-				}}
-			>
-				record
-			</button>
+			<button onclick=${recordAndSendAudio}>record</button>
 		</div>
 	`
 

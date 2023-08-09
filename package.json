@@ -12,7 +12,8 @@
 		"@babel/runtime": "^7.22.6",
 		"meteor-node-stubs": "^1.2.1",
 		"openai": "^3.3.0",
-		"solid-js": "^1.5.4"
+		"solid-js": "^1.5.4",
+		"web-file-polyfill": "^1.0.4"
 	},
 	"meteor": {
 		"mainModule": {
