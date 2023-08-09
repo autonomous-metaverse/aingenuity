@@ -1,11 +1,9 @@
 // @ts-check
+import { Meteor } from 'meteor/meteor'
+import { defineElements } from 'lume'
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/loaders/GLTFLoader.js'
 //   import * as HOST from "../src/three.js/index.js";
-
-import { defineElements } from 'lume'
-
-import { Meteor } from 'meteor/meteor'
 
 defineElements()
 
@@ -191,6 +189,49 @@ class AutoApp extends HTMLElement {
 		speakers.set('Alien', host2)
 
 		this.initializeUX()
+
+		this.setupControls()
+	}
+
+	downKeys = new Set()
+
+	setupControls() {
+		document.addEventListener('keydown', event => {
+			this.downKeys.add(event.key)
+		})
+		document.addEventListener('keyup', event => {
+			this.downKeys.delete(event.key)
+		})
+
+		const camera = this.shadowRoot?.querySelector('lume-perspective-camera')
+
+		const loop = () => {
+			if (this.downKeys.has('w')) camera.position.z -= 0.05
+			if (this.downKeys.has('a')) camera.position.x -= 0.05
+			if (this.downKeys.has('s')) camera.position.z += 0.05
+			if (this.downKeys.has('d')) camera.position.x += 0.05
+
+			requestAnimationFrame(loop)
+		}
+
+		requestAnimationFrame(loop)
+
+		let pointers = new Set()
+
+		this.addEventListener('pointerdown', event => {
+			if (pointers.size > 1) return // just one pointer for now
+			pointers.add(event.pointerId)
+		})
+		this.addEventListener('pointermove', event => {
+			if (!pointers.has(event.pointerId)) return // just one pointer for now
+
+			camera.parentElement.rotation.y -= event.movementX * 0.3
+			camera.rotation.x += event.movementY * 0.3
+		})
+		this.addEventListener('pointerup', event => {
+			if (!pointers.has(event.pointerId)) return // just one pointer for now
+			pointers.delete(event.pointerId)
+		})
 	}
 
 	makeDOM() {
@@ -205,7 +246,17 @@ class AutoApp extends HTMLElement {
 					-->
 					<lume-element3d align-point="0.5 0.5">
 
-						<lume-camera-rig initial-distance="3" min-distance="1" max-distance="100" dolly-speed="0.03" position="0 -0.65"></lume-camera-rig>
+						<!--<lume-camera-rig
+							initial-distance="3"
+							min-distance="1"
+							max-distance="100"
+							dolly-speed="0.03"
+							position="0 -0.65"
+						></lume-camera-rig>-->
+
+						<lume-element3d position="0 -1.4 2" >
+							<lume-perspective-camera active></lume-perspective-camera>
+						</lume-element3d>
 
 						<lume-directional-light
 							position="0 -4 5"
