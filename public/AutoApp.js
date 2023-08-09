@@ -204,12 +204,14 @@ class AutoApp extends HTMLElement {
 		})
 
 		const camera = this.shadowRoot?.querySelector('lume-perspective-camera')
+		const cameraRoot = camera?.parentElement
 
 		const loop = () => {
-			if (this.downKeys.has('w')) camera.position.z -= 0.05
-			if (this.downKeys.has('a')) camera.position.x -= 0.05
-			if (this.downKeys.has('s')) camera.position.z += 0.05
-			if (this.downKeys.has('d')) camera.position.x += 0.05
+			// TODO sin/cos for direction
+			if (this.downKeys.has('w')) cameraRoot.position.z -= 0.05
+			if (this.downKeys.has('a')) cameraRoot.position.x -= 0.05
+			if (this.downKeys.has('s')) cameraRoot.position.z += 0.05
+			if (this.downKeys.has('d')) cameraRoot.position.x += 0.05
 
 			requestAnimationFrame(loop)
 		}
@@ -225,7 +227,7 @@ class AutoApp extends HTMLElement {
 		this.addEventListener('pointermove', event => {
 			if (!pointers.has(event.pointerId)) return // just one pointer for now
 
-			camera.parentElement.rotation.y -= event.movementX * 0.3
+			cameraRoot.rotation.y -= event.movementX * 0.3
 			camera.rotation.x += event.movementY * 0.3
 		})
 		this.addEventListener('pointerup', event => {
