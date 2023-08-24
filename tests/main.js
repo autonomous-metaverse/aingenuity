@@ -1,9 +1,9 @@
 import assert from 'assert'
 
-describe('solid-template', function () {
+describe('test stub', function () {
 	it('package.json has correct name', async function () {
 		const { name } = await import('../package.json')
-		assert.strictEqual(name, 'solid-template')
+		assert.strictEqual(name, 'unnamed-experiment')
 	})
 
 	if (Meteor.isClient) {

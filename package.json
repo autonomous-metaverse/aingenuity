@@ -12,21 +12,16 @@
 		"@babel/runtime": "^7.22.6",
 		"meteor-node-stubs": "^1.2.1",
 		"openai": "^3.3.0",
-		"solid-js": "^1.5.4",
 		"web-file-polyfill": "^1.0.4"
 	},
 	"meteor": {
 		"mainModule": {
-			"client": "client/main.jsx",
+			"client": "client/main.js",
 			"server": "server/main.js"
 		},
 		"testModule": "tests/main.js"
 	},
 	"devDependencies": {
-		"babel-preset-solid": "^1.5.4",
-		"prettier": "^3.0.0",
-		"vite": "^3.0.9",
-		"vite-plugin-solid": "^2.3.0",
-		"vite-plugin-solid-svg": "^0.4.1"
+		"prettier": "^3.0.0"
 	}
 }

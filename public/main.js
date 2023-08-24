@@ -1,4 +1,3 @@
-/* @jsxImportSource solid-js */
 // @ts-check
 import { Meteor } from 'meteor/meteor'
 import { Tracker } from 'meteor/tracker'
