@@ -59,12 +59,13 @@ function App() {
 		})
 	}
 
+	// TODO combine this with auto-app in a more sane way.
 	const div = html`
 		<div>
 			Log in to chat: ${loginBox}
 
 			<form onsubmit=${sendMessage} style=${() => (state.user ? '' : 'display: none')}>
-				<input ref=${el => (input = el)} type="text" />
+				<input ref=${el => (input = el)} type="text" placeholder="Write message, hit enter." />
 			</form>
 
 			<div>${() => state.response}</div>

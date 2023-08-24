@@ -3,6 +3,7 @@ import { Meteor } from 'meteor/meteor'
 import { defineElements } from 'lume'
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/loaders/GLTFLoader.js'
+import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/webxr/VRButton.js'
 //   import * as HOST from "../src/three.js/index.js";
 
 defineElements()
@@ -193,6 +194,9 @@ class AutoApp extends HTMLElement {
 		this.setupControls()
 	}
 
+	/** @type {Array<(time: number) => void>} */
+	animationLoopUpdates = []
+
 	downKeys = new Set()
 
 	setupControls() {
@@ -206,17 +210,16 @@ class AutoApp extends HTMLElement {
 		const camera = this.shadowRoot?.querySelector('lume-perspective-camera')
 		const cameraRoot = camera?.parentElement
 
+		// Every animation frame, move the camera if WASD keys are held.
 		const loop = () => {
 			// TODO sin/cos for direction
 			if (this.downKeys.has('w')) cameraRoot.position.z -= 0.05
 			if (this.downKeys.has('a')) cameraRoot.position.x -= 0.05
 			if (this.downKeys.has('s')) cameraRoot.position.z += 0.05
 			if (this.downKeys.has('d')) cameraRoot.position.x += 0.05
-
-			requestAnimationFrame(loop)
 		}
 
-		requestAnimationFrame(loop)
+		this.animationLoopUpdates.push(loop)
 
 		let pointers = new Set()
 
@@ -240,7 +243,11 @@ class AutoApp extends HTMLElement {
 		const el = document.createElement('lume-directional-light')
 		this.shadowRoot.innerHTML = /*html*/ `
 			<div id="lume">
-				<lume-scene webgl>
+				<lume-scene
+					webgl
+					xvr="true"
+					comment="for now we don't use Lume's vr feature, need to get Sumerian code and Lume on the same Three.js version in issue #9."
+				>
 
 					<!--
 					Align the Lume scene with the Sumerian Threejs scene.
@@ -408,9 +415,6 @@ class AutoApp extends HTMLElement {
 					top: 10px;
 					left: 10px;
 					border-radius: 10px;
-				}
-
-				#ui {
 					padding: 10px;
 					background: rgba(0, 0, 0, 0.8);
 				}
@@ -494,6 +498,12 @@ class AutoApp extends HTMLElement {
 		renderer.domElement.id = 'renderCanvas'
 		this.shadowRoot.getElementById('scene').append(renderer.domElement)
 
+		// Enable XR (TODO render from Lume and enable XR on the Lume scene once we update Three.js versions in issue #9)
+		renderer.xr.enabled = true
+		const button = VRButton.createButton(renderer)
+		button.style = 'position: unset;'
+		this.shadowRoot.getElementById('ui')?.append(button)
+
 		// Env map
 		new THREE.TextureLoader().setPath('/assets/').load('images/machine_shop.jpg', hdrEquirect => {
 			const hdrCubeRenderTarget = pmremGenerator.fromEquirectangular(hdrEquirect)
@@ -543,11 +553,15 @@ class AutoApp extends HTMLElement {
 				// Render with the original Sumerian camera.
 				renderer.render(scene, camera)
 			}
-
-			requestAnimationFrame(render)
 		}
 
-		render()
+		// Add this callback in a microtask so that render happens last after
+		// any other callbacks.
+		queueMicrotask(() => this.animationLoopUpdates.push(render))
+
+		renderer.setAnimationLoop(time => {
+			for (const fn of this.animationLoopUpdates) fn(time)
+		})
 
 		// Lights
 		const hemiLight = new THREE.HemisphereLight(0xffffff, 0x000000, 0.6)

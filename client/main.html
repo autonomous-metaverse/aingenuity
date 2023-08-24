@@ -62,6 +62,30 @@
 
 	<auto-app></auto-app>
 
+	<div id="debug">
+		<style>
+			#debug {
+				color: red;
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				height: 300px;
+				width: 600px;
+				overflow: auto;
+				pointer-events: none;
+			}
+		</style>
+
+		<script>
+			window.addEventListener('error', event => {
+				/** @type {Error | undefined} */
+				const error = event.error
+				console.error('Uncaught Error Event', event.error, event.lineno, event.colno, error?.stack, error?.message)
+				div.insertAdjacentHTML('beforeend', '<br />' + error?.message + '<br />' + error?.stack)
+			})
+		</script>
+	</div>
+
 	<!--Create the Three.js scene-->
 	<script type="module" src="/main.js"></script>
 </body>
