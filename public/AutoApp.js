@@ -30,7 +30,8 @@ const useLumeCamera = true
 /**
  * When true, CSS transforms are output to Lume elements using Lume's CSS
  * rendering, which is useful for hovering on elements in devtools element
- * inspector and see where they are on screen.
+ * inspector and seeing where they are on screen. This has some additional
+ * performance overhead.
  */
 const cssTransformsForDebug = false
 
