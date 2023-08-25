@@ -1,10 +1,16 @@
 // @ts-check
+import './make-three-global.js'
 import { Meteor } from 'meteor/meteor'
 import { defineElements } from 'lume'
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/loaders/GLTFLoader.js'
-import { VRButton } from 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/jsm/webxr/VRButton.js'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js'
+import { loadNonModuleScript } from './utils/loadNonModuleScript.js'
 //   import * as HOST from "../src/three.js/index.js";
+
+// Load the global "HOST" API from the build file copied over from the build
+// output of the Amazon Sumerian three.js demo.
+await loadNonModuleScript('/host.three.js')
 
 defineElements()
 
@@ -576,7 +582,7 @@ class AutoApp extends HTMLElement {
 		})
 		groundMat.metalness = 0
 		groundMat.refractionRatio = 0
-		const ground = new THREE.Mesh(new THREE.PlaneBufferGeometry(100, 100), groundMat)
+		const ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), groundMat)
 		ground.rotation.x = -Math.PI / 2
 		ground.receiveShadow = true
 		scene.add(ground)

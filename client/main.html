@@ -8,13 +8,14 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<title>Three.js Host Test</title>
 
+	<script>
+		// Small hack: prevent Meteor from creating a global `exports` object
+		// (https://github.com/meteor/meteor/issues/12759)
+		Object.defineProperty(globalThis, 'exports', { value: undefined })
+	</script>
+
 	<!--Text to speech dependency-->
 	<script type="text/javascript" src="https://sdk.amazonaws.com/js/aws-sdk-2.645.0.min.js"></script>
-	<!-- Convert to ESM -->
-	<!--Three.js dependencies-->
-	<script src="https://cdn.jsdelivr.net/npm/three@0.127.0/build/three.min.js"></script>
-	<!--Host build file-->
-	<script type="text/javascript" src="/host.three.js"></script>
 
 	<!-- <script type="importmap">{
         "imports": {
