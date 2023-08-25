@@ -8,7 +8,7 @@
 		"test-app": "TEST_WATCH=1 meteor test --full-app --driver-package meteortesting:mocha",
 		"visualize": "meteor --production --extra-packages bundle-visualizer",
 		"deploy": "git push git@github.com:autonomys-nodechef/unnamed-experiment.git",
-		"postinstall": "cd public/ && npm install"
+		"postinstall": "cd public/ && npm install && npm ls -a"
 	},
 	"dependencies": {
 		"@babel/runtime": "^7.22.6",
