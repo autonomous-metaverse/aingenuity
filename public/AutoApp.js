@@ -1,7 +1,7 @@
 // @ts-check
 import './make-three-global.js'
 import { Meteor } from 'meteor/meteor'
-import { defineElements } from 'lume'
+import { Motor, defineElements } from 'lume'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js'
@@ -14,7 +14,25 @@ await loadNonModuleScript('/host.three.js')
 
 defineElements()
 
+/**
+ * Whether to use Lume's scene for rendering. When true, the Sumerian Three.js
+ * scene is appended to the Lume Three.js scene, otherwise the Lume scene is
+ * appended to the Sumerian scene.
+ */
+const renderWithLume = true
+
+/**
+ * Whether to use Lume's camera while rendering with the Sumerian vanilla Three.js scene.
+ * If rendering with Lume, this is ignored, and Lume's camera is always used.
+ */
 const useLumeCamera = true
+
+/**
+ * When true, CSS transforms are output to Lume elements using Lume's CSS
+ * rendering, which is useful for hovering on elements in devtools element
+ * inspector and see where they are on screen.
+ */
+const cssTransformsForDebug = false
 
 const renderFn = []
 const speakers = new Map([
@@ -251,8 +269,8 @@ class AutoApp extends HTMLElement {
 			<div id="lume">
 				<lume-scene
 					webgl
-					xvr="true"
-					comment="for now we don't use Lume's vr feature, need to get Sumerian code and Lume on the same Three.js version in issue #9."
+					enable-css="${cssTransformsForDebug}"
+					vr="${renderWithLume ? true : false}"
 				>
 
 					<!--
@@ -410,9 +428,10 @@ class AutoApp extends HTMLElement {
 					width: 100%;
 					height: 100%;
 
-					/** Make the Lume scene visibly hidden because we're rendering with the Sumerian scene. */
-					opacity: 0.000001;
+					/* Make the Lume scene visibly hidden because we're rendering with the Sumerian scene. */
+					opacity: ${renderWithLume ? '1' : '0.000001'};
 
+					/* If we're not using the Lume camera, we can completely hide the Lume scene, otherwise we make it practically invisible with tiny opacity so that it will catch pointer events for Lume's camera functionality. */
 					${useLumeCamera ? '' : 'display: none;'}
 				}
 
@@ -486,11 +505,15 @@ class AutoApp extends HTMLElement {
 		scene.background = new THREE.Color(0x33334d)
 		scene.fog = new THREE.Fog(0x33334d, 0, 10)
 
-		// Render one scene in the other
 		this.lumeScene = this.shadowRoot?.querySelector('lume-scene')
-		scene.children.push(this.lumeScene.three)
-		// (rendering the Sumerian scene in the Lume scene doesn't work currently due to version differences of Threejs libs)
-		// this.lumeScene.three.children.push(scene)
+
+		// Render one scene in the other
+		if (renderWithLume) {
+			// (rendering the Sumerian scene in the Lume scene doesn't work currently due to version differences of Threejs libs)
+			this.lumeScene.three.children.push(scene)
+		} else {
+			scene.children.push(this.lumeScene.three)
+		}
 
 		const clock = new THREE.Clock()
 
@@ -504,11 +527,13 @@ class AutoApp extends HTMLElement {
 		renderer.domElement.id = 'renderCanvas'
 		this.shadowRoot.getElementById('scene').append(renderer.domElement)
 
-		// Enable XR (TODO render from Lume and enable XR on the Lume scene once we update Three.js versions in issue #9)
-		renderer.xr.enabled = true
-		const button = VRButton.createButton(renderer)
-		button.style = 'position: unset;'
-		this.shadowRoot.getElementById('ui')?.append(button)
+		if (!renderWithLume) {
+			// Enable XR
+			renderer.xr.enabled = true
+			const button = VRButton.createButton(renderer)
+			button.style = 'position: unset;'
+			this.shadowRoot.getElementById('ui')?.append(button)
+		}
 
 		// Env map
 		new THREE.TextureLoader().setPath('/assets/').load('images/machine_shop.jpg', hdrEquirect => {
@@ -545,29 +570,42 @@ class AutoApp extends HTMLElement {
 		window.addEventListener('resize', onWindowResize, false)
 
 		// Render loop
-		const render = () => {
+		const loop = () => {
 			controls.update()
 
 			renderFn.forEach(fn => {
 				fn()
 			})
 
-			if (useLumeCamera) {
-				// Render with Lume's camera
-				renderer.render(scene, this.lumeScene?.camera.three)
+			if (renderWithLume) {
+				// Skip rendering with the Sumerian Three.js renderer.
 			} else {
-				// Render with the original Sumerian camera.
-				renderer.render(scene, camera)
+				if (useLumeCamera) {
+					// Render with Lume's camera
+					renderer.render(scene, this.lumeScene?.camera.three)
+				} else {
+					// Render with the original Sumerian camera.
+					renderer.render(scene, camera)
+				}
 			}
 		}
 
-		// Add this callback in a microtask so that render happens last after
-		// any other callbacks.
-		queueMicrotask(() => this.animationLoopUpdates.push(render))
+		queueMicrotask(() => this.animationLoopUpdates.push(loop))
 
-		renderer.setAnimationLoop(time => {
-			for (const fn of this.animationLoopUpdates) fn(time)
-		})
+		// If we're rendering with the Lume scene, we should hook into its own
+		// loop system so that when WebXR is enabled we're hooked into its XR
+		// loop.
+		if (renderWithLume) {
+			Motor.addRenderTask(time => {
+				for (const fn of this.animationLoopUpdates) fn(time)
+			})
+		} else {
+			// Add this callback in a microtask so that render happens last after
+			// any other callbacks.
+			renderer.setAnimationLoop(time => {
+				for (const fn of this.animationLoopUpdates) fn(time)
+			})
+		}
 
 		// Lights
 		const hemiLight = new THREE.HemisphereLight(0xffffff, 0x000000, 0.6)
@@ -587,7 +625,9 @@ class AutoApp extends HTMLElement {
 		ground.receiveShadow = true
 		scene.add(ground)
 
-		return { scene, camera: useLumeCamera ? this.lumeScene?.camera.three : camera, clock }
+		const lumeCamera = this.lumeScene?.camera.three
+
+		return { scene, camera: renderWithLume ? lumeCamera : useLumeCamera ? lumeCamera : camera, clock }
 	}
 
 	// Load character model and animations
