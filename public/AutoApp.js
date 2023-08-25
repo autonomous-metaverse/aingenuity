@@ -271,6 +271,12 @@ class AutoApp extends HTMLElement {
 					webgl
 					enable-css="${cssTransformsForDebug}"
 					vr="${renderWithLume ? true : false}"
+					background-color="#33334d"
+					background-opacity="1"
+					fog-mode="linear"
+					fog-color="#33334d"
+					fog-near="0"
+					fog-far="10"
 				>
 
 					<!--
