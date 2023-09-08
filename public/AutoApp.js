@@ -237,11 +237,24 @@ class AutoApp extends HTMLElement {
 
 		// Every animation frame, move the camera if WASD keys are held.
 		const loop = () => {
-			// TODO sin/cos for direction
-			if (this.downKeys.has('w')) cameraRoot.position.z -= 0.05
-			if (this.downKeys.has('a')) cameraRoot.position.x -= 0.05
-			if (this.downKeys.has('s')) cameraRoot.position.z += 0.05
-			if (this.downKeys.has('d')) cameraRoot.position.x += 0.05
+			const speed = 0.05;
+		
+			if (this.downKeys.has('w')) {
+				cameraRoot.position.x += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180));
+				cameraRoot.position.z += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180));
+			}
+			if (this.downKeys.has('s')) {
+				cameraRoot.position.x -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180));
+				cameraRoot.position.z -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180));
+			}
+			if (this.downKeys.has('a')) {
+				cameraRoot.position.x += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180));
+				cameraRoot.position.z += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180));
+			}
+			if (this.downKeys.has('d')) {
+				cameraRoot.position.x -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180));
+				cameraRoot.position.z -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180));
+			}
 		}
 
 		this.animationLoopUpdates.push(loop)
