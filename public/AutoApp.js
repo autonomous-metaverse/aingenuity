@@ -238,7 +238,9 @@ class AutoApp extends HTMLElement {
 		// Every animation frame, move the camera if WASD keys are held.
 		const loop = () => {
 			const speed = 0.05;
-		
+			const jumpHeight = 0.1; // Define how much the camera moves up when jumping
+			const crouchHeight = 0.1; // Define how much the camera moves down when crouching
+			
 			if (this.downKeys.has('w')) {
 				cameraRoot.position.x += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180));
 				cameraRoot.position.z += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180));
@@ -254,6 +256,14 @@ class AutoApp extends HTMLElement {
 			if (this.downKeys.has('d')) {
 				cameraRoot.position.x -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180));
 				cameraRoot.position.z -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180));
+			}
+			
+			// Jump and Crouch
+			if (this.downKeys.has('r')) {
+				cameraRoot.position.y -= jumpHeight; // Move the camera up
+			}
+			if (this.downKeys.has('Shift')) {
+				cameraRoot.position.y += crouchHeight; // Move the camera down
 			}
 		}
 
