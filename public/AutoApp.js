@@ -259,7 +259,7 @@ class AutoApp extends HTMLElement {
 			}
 			
 			// Jump and Crouch
-			if (this.downKeys.has('r')) {
+			if (this.downKeys.has(' ')) {
 				cameraRoot.position.y -= jumpHeight; // Move the camera up
 			}
 			if (this.downKeys.has('Shift')) {
