@@ -4,6 +4,7 @@ import { Configuration, OpenAIApi } from 'openai/dist/index.js'
 import { createReadStream, promises } from 'fs'
 import { Readable } from 'stream'
 import { File, Blob } from 'web-file-polyfill'
+import { PlayerStates } from '../public/PlayerStates'
 
 const { open, writeFile } = promises
 
@@ -92,5 +93,16 @@ Meteor.methods({
 		// }).then(r => r.text)
 
 		return Meteor.call('sendMessage', text)
+	},
+
+	/**
+	 * @param {import('../public/PlayerStates').PlayerState} playerState
+	 */
+	async updatePlayerState(playerState) {
+		const id = Meteor.userId()
+
+		if (!id) throw new Error('Not logged in.')
+
+		PlayerStates.upsert({ _id: id }, playerState)
 	},
 })

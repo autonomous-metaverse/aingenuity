@@ -2,7 +2,15 @@
 	"name": "unnamed-experiment",
 	"type": "module",
 	"dependencies": {
+		"@amazon-sumerian-hosts/three": "^2.0.6",
+		"aws-sdk": "^2.645.0",
+		"jquery": "^3.7.1",
+		"lodash-es": "^4.17.21",
 		"lume": "^0.3.0-alpha.27",
 		"three": ">=0.139.0"
+	},
+	"// override three to the version in this package.json (Sumerian's three.js is otherwise locked at 0.127.0)": "",
+	"overrides": {
+		"three": "$three"
 	}
 }

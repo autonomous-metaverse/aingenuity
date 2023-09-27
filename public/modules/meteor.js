@@ -3,6 +3,7 @@ export let Meteor = globalThis.Meteor // Only Meteor is initially available
 export let Blaze
 export let Tracker
 export let Template
+export let Mongo
 
 const promises = [new Promise(r => Meteor.startup(r))]
 
@@ -18,6 +19,7 @@ promises.push(
 				Blaze = globalThis.Blaze
 				Tracker = globalThis.Tracker
 				Template = globalThis.Template
+				Mongo = globalThis.Mongo
 
 				resolve()
 			} else setTimeout(waitForGlobals)

@@ -1,31 +1,45 @@
 // @ts-check
 import './make-three-global.js'
 import { Meteor } from 'meteor/meteor'
-import { Motor, defineElements } from 'lume'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { Tracker } from 'meteor/tracker'
+import {
+	Element3D,
+	Index,
+	Motor,
+	PerspectiveCamera,
+	Scene,
+	createEffect,
+	createSignal,
+	defineElements,
+	html,
+} from 'lume'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { VRButton } from 'three/examples/jsm/webxr/VRButton.js'
-import { loadNonModuleScript } from './utils/loadNonModuleScript.js'
-//   import * as HOST from "../src/three.js/index.js";
+import throttle from 'lodash-es/throttle.js'
+import { PlayerStates } from './PlayerStates.js'
+
+/////////////////////////////////
+
+// TODO: switch to ESM (Finish ESM'ifying the lib first, https://github.com/aws-samples/amazon-sumerian-hosts/issues/182)
+// import * as HOST from '@amazon-sumerian-hosts/three'
+
+/////////////////////////////////
 
 // Load the global "HOST" API from the build file copied over from the build
 // output of the Amazon Sumerian three.js demo.
+const { loadNonModuleScript } = await import('./utils/loadNonModuleScript.js')
 await loadNonModuleScript('/host.three.js')
+
+/////////////////////////////////
 
 defineElements()
 
 /**
- * Whether to use Lume's scene for rendering. When true, the Sumerian Three.js
- * scene is appended to the Lume Three.js scene, otherwise the Lume scene is
- * appended to the Sumerian scene.
+ * @typedef {import('./PlayerStates.js').PlayerState} PlayerState
  */
-const renderWithLume = true
 
 /**
- * Whether to use Lume's camera while rendering with the Sumerian vanilla Three.js scene.
- * If rendering with Lume, this is ignored, and Lume's camera is always used.
+ * @typedef {import('./PlayerStates.js').PlayerStateDocument} PlayerStateDocument
  */
-const useLumeCamera = true
 
 /**
  * When true, CSS transforms are output to Lume elements using Lume's CSS
@@ -33,9 +47,8 @@ const useLumeCamera = true
  * inspector and seeing where they are on screen. This has some additional
  * performance overhead.
  */
-const cssTransformsForDebug = false
+const cssTransformsForDebug = true
 
-const renderFn = []
 const speakers = new Map([
 	['Luke', undefined],
 	['Alien', undefined],
@@ -44,6 +57,11 @@ const speakers = new Map([
 export let controlSpeech = null
 
 class AutoApp extends HTMLElement {
+	/** @type {ReturnType<typeof createSignal<PlayerStateDocument[]>>} */
+	#playerStates = createSignal([])
+	playerStates = this.#playerStates[0]
+	setPlayerStates = this.#playerStates[1]
+
 	constructor() {
 		super()
 		this.attachShadow({ mode: 'open' })
@@ -59,6 +77,9 @@ class AutoApp extends HTMLElement {
 		// Move the sphere around in a circle based on time.
 		const sphere = this.shadowRoot?.querySelector('lume-sphere')
 		sphere.position = (x, y, z, t) => [0.1 * Math.sin(t * 0.005), y, 0.1 * Math.cos(t * 0.005)]
+
+		const sphereContainer = this.shadowRoot?.getElementById('sphereContainer')
+		sphereContainer.position = (x, y, z, t) => [x, y, 0.8 * Math.cos(t * 0.001)]
 
 		// Wait for Meteor auth and API to be ready.
 		await new Promise(r => Meteor.startup(r))
@@ -107,7 +128,7 @@ class AutoApp extends HTMLElement {
 		const voiceEngine = 'neural' // Neural engine is not available for all voices in all regions: https://docs.aws.amazon.com/polly/latest/dg/NTTS-main.html
 
 		// Set up the scene and host
-		const { scene, camera, clock } = this.createScene()
+		const { scene, camera, clock } = this.createSumerianContainer()
 		const {
 			character: character1,
 			clips: clips1,
@@ -217,10 +238,53 @@ class AutoApp extends HTMLElement {
 		this.initializeUX()
 
 		this.setupControls()
+
+		this.trackPlayerState()
+
+		this.syncPlayerStates()
 	}
 
-	/** @type {Array<(time: number) => void>} */
-	animationLoopUpdates = []
+	trackPlayerState() {
+		const camera = /** @type {PerspectiveCamera} */ (this.shadowRoot?.querySelector('lume-perspective-camera'))
+		const cameraRoot = /** @type {Element3D} */ (camera?.parentElement)
+
+		/** @type {PlayerState} */
+		let playerState = {
+			r: { x: camera.rotation.x, y: cameraRoot.rotation.y },
+			p: { x: cameraRoot.position.x, y: cameraRoot.position.y, z: cameraRoot.position.z },
+		}
+
+		const updatePlayerState = throttle(() => {
+			console.log('playerState throttled:', playerState)
+			Meteor.call('updatePlayerState', playerState)
+		}, 200)
+
+		createEffect(() => {
+			playerState = {
+				r: { x: camera.rotation.x, y: cameraRoot.rotation.y },
+				p: { x: cameraRoot.position.x, y: cameraRoot.position.y, z: cameraRoot.position.z },
+			}
+
+			updatePlayerState()
+		})
+	}
+
+	// Next stop: Sirius.
+
+	syncPlayerStates() {
+		Tracker.autorun(() => {
+			/** @type {PlayerStateDocument[]} */
+			const playerStates = []
+
+			PlayerStates.find().forEach(state => playerStates.push(state))
+
+			this.setPlayerStates(playerStates)
+		})
+
+		createEffect(() => {
+			console.log('synced player states:', this.playerStates())
+		})
+	}
 
 	downKeys = new Set()
 
@@ -232,15 +296,15 @@ class AutoApp extends HTMLElement {
 			this.downKeys.delete(event.key)
 		})
 
-		const camera = this.shadowRoot?.querySelector('lume-perspective-camera')
-		const cameraRoot = camera?.parentElement
+		const camera = /** @type {PerspectiveCamera} */ (this.shadowRoot?.querySelector('lume-perspective-camera'))
+		const cameraRoot = /** @type {Element3D} */ (camera?.parentElement)
 
 		// Every animation frame, move the camera if WASD keys are held.
 		const loop = () => {
 			const speed = 0.05;
 			const jumpHeight = 0.1; // Define how much the camera moves up when jumping
 			const crouchHeight = 0.1; // Define how much the camera moves down when crouching
-			
+
 			if (this.downKeys.has('w')) {
 				cameraRoot.position.x += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180));
 				cameraRoot.position.z += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180));
@@ -257,7 +321,7 @@ class AutoApp extends HTMLElement {
 				cameraRoot.position.x -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180));
 				cameraRoot.position.z -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180));
 			}
-			
+
 			// Jump and Crouch
 			if (this.downKeys.has(' ')) {
 				cameraRoot.position.y -= jumpHeight; // Move the camera up
@@ -267,7 +331,7 @@ class AutoApp extends HTMLElement {
 			}
 		}
 
-		this.animationLoopUpdates.push(loop)
+		Motor.addRenderTask(loop)
 
 		let pointers = new Set()
 
@@ -288,78 +352,138 @@ class AutoApp extends HTMLElement {
 	}
 
 	makeDOM() {
-		const el = document.createElement('lume-directional-light')
-		this.shadowRoot.innerHTML = /*html*/ `
-			<div id="lume">
-				<lume-scene
-					webgl
-					enable-css="${cssTransformsForDebug}"
-					vr="${renderWithLume ? true : false}"
-					background-color="#33334d"
-					background-opacity="1"
-					fog-mode="linear"
-					fog-color="#33334d"
-					fog-near="0"
-					fog-far="10"
-				>
+		let speakContent
+		let style
 
-					<!--
+		// const el = document.createElement('lume-directional-light')
+		// this.shadowRoot.innerHTML = /*html*/ `
+		this.shadowRoot.append(
+			...html`
+				<div id="lume">
+					<lume-scene
+						webgl
+						enable-css="${cssTransformsForDebug}"
+						vr="true"
+						background-color="#33334d"
+						background-opacity="1"
+						fog-mode="linear"
+						fog-color="#33334d"
+						fog-near="0"
+						fog-far="10"
+					>
+						${
+							'' /*
 					Align the Lume scene with the Sumerian Threejs scene.
 					We may remove this when we update Lume so its default origin aligns with Three.js.
-					-->
-					<lume-element3d align-point="0.5 0.5">
+					*/
+						}
+						<lume-element3d align-point="0.5 0.5">
+							${
+								'' /*
+							<lume-camera-rig
+								initial-distance="3"
+								min-distance="1"
+								max-distance="100"
+								dolly-speed="0.03"
+								position="0 -0.65"
+							></lume-camera-rig>
+							*/
+							}
 
-						<!--<lume-camera-rig
-							initial-distance="3"
-							min-distance="1"
-							max-distance="100"
-							dolly-speed="0.03"
-							position="0 -0.65"
-						></lume-camera-rig>-->
+							<lume-element3d position="0 -1.4 2">
+								<lume-perspective-camera active innerHTML="<p>test</p>"></lume-perspective-camera>
+							</lume-element3d>
 
-						<lume-element3d position="0 -1.4 2" >
-							<lume-perspective-camera active></lume-perspective-camera>
+							<!-- prettier-ignore -->
+							<${Index} each=${this.playerStates}>${s => html`
+								<lume-element3d position=${() => [s().p.x, s().p.y, s().p.z]} rotation=${() => [0, s().r.y, 0]}>
+									<lume-box rotation=${() => [s().r.x, 0, 0]} size="0.3 0.3 0.3" mount-point="0.5 0.5 0.5"></lume-box>
+								</lume-element3d>
+							`}</>
+
+							<lume-directional-light
+								position="0 -4 5"
+								cast-shadow="true"
+								shadow-map-width="1024"
+								shadow-map-height="1024"
+								shadow-camera-top="2.5"
+								shadow-camera-bottom="-2.5"
+								shadow-camera-left="-2.5"
+								shadow-camera-right="2.5"
+								shadow-camera-near="0.1"
+								shadow-camera-far="40"
+							></lume-directional-light>
+
+							<lume-box
+								position="-2"
+								rotation="0 -30"
+								size="0.5 0.5 0.5"
+								mount-point="0.5 1 0.5"
+								color="pink"
+							></lume-box>
+
+							<lume-element3d id="sphereContainer" position="2">
+								<lume-sphere size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="skyblue"></lume-sphere>
+
+								<lume-sphere
+									size="0.1 0.1 0.1"
+									mount-point="0.5 1 0.5"
+									position="0 -0.5 0"
+									color="deeppink"
+								></lume-sphere>
+							</lume-element3d>
+
+							<lume-plane
+								has="physical-material"
+								metalness="0"
+								color="#808080"
+								size="100 100"
+								rotation="90"
+								mount-point="0.5 0.5"
+							></lume-plane>
 						</lume-element3d>
+					</lume-scene>
+				</div>
 
-						<lume-directional-light
-							position="0 -4 5"
-							cast-shadow=true
-							shadow-map-width="1024"
-							shadow-map-height="1024"
-							shadow-camera-top="2.5"
-							shadow-camera-bottom="-2.5"
-							shadow-camera-left="-2.5"
-							shadow-camera-right="2.5"
-							shadow-camera-near="0.1"
-							shadow-camera-far="40"
-						></lume-directional-light>
+				<div id="ui">
+					<slot>${'' /*Login UI from main.jsx gets slotted here.*/}</slot>
 
-						<lume-box position="-2" rotation="0 -30" size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="pink"></lume-box>
+					${'' /*Text to speech controls*/}
+					<div id="textToSpeech" class="hidden">
+						<button class="tab current">Luke</button>
+						<button class="tab">Alien</button>
+						<div ref=${el => (speakContent = el)}></div>
+						<div>
+							<button id="play" class="speechButton">Play</button>
+							<button id="pause" class="speechButton">Pause</button>
+							<button id="resume" class="speechButton">Resume</button>
+							<button id="stop" class="speechButton">Stop</button>
+						</div>
+						<div>
+							<button id="gestures" class="gestureButton">Generate Gestures</button>
+						</div>
+						<div>
+							<select id="emotes" class="gestureButton"></select>
+						</div>
+						<div>
+							<button id="playEmote" class="gestureButton">Play Emote</button>
+						</div>
+					</div>
+				</div>
 
-						<lume-element3d position="2">
-							<lume-sphere size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="skyblue"></lume-sphere>
-						</lume-element3d>
+				${'' /* loading screen ///////////////////////////////////////////////////////////////*/}
 
-					</lume-element3d>
+				<div id="loadScreen">
+					<div id="loader"></div>
+				</div>
 
-				</lume-scene>
-			</div>
+				<div ref=${el => (style = el)}></div>
+			`,
+		)
 
-			<div id="scene">
-				<!-- The Three.js scene canvas gets appended here. -->
-			</div>
-
-			<div id="ui">
-				<slot>
-					<!-- Login UI from main.jsx gets slotted here. -->
-				</slot>
-
-				<!--Text to speech controls-->
-				<div id="textToSpeech" class="hidden">
-					<button class="tab current">Luke</button>
-					<button class="tab">Alien</button>
-					<div>
-						<textarea autofocus size="23" type="text" class="textEntry Luke">
+		// Add this via innerHTML because Solid.js html template tag has some issues parsing this particular HTML.
+		speakContent.innerHTML = /*html*/ `
+							<textarea autofocus size="23" type="text" class="textEntry Luke">
 <speak>
 	<amazon:domain name="conversational">
 		Hello, my name is Luke. I used to only be a host inside Amazon Sumerian, but
@@ -370,8 +494,8 @@ class AutoApp extends HTMLElement {
 	</amazon:domain>
 </speak>
 </textarea
-						>
-						<textarea autofocus size="23" type="text" class="textEntry Alien">
+							>
+							<textarea autofocus size="23" type="text" class="textEntry Alien">
 <speak>
 	Hi there! As you can see I'm set up to be a host too, although I don't use
 	the same type of skeleton as any of the original Amazon Sumerian hosts. With
@@ -380,33 +504,10 @@ class AutoApp extends HTMLElement {
 	characters you'll bring to life!
 </speak>
 </textarea
-						>
-					</div>
-					<div>
-						<button id="play" class="speechButton">Play</button>
-						<button id="pause" class="speechButton">Pause</button>
-						<button id="resume" class="speechButton">Resume</button>
-						<button id="stop" class="speechButton">Stop</button>
-					</div>
-					<div>
-						<button id="gestures" class="gestureButton">Generate Gestures</button>
-					</div>
-					<div>
-						<select id="emotes" class="gestureButton"></select>
-					</div>
-					<div>
-						<button id="playEmote" class="gestureButton">Play Emote</button>
-					</div>
-				</div>
-			</div>
+							>
+		`
 
-			<!-- /////////////////////////////////////////////////////////////// -->
-
-			<!--Loading screen-->
-			<div id="loadScreen">
-				<div id="loader"></div>
-			</div>
-
+		style.innerHTML = /*html*/ `
 			<style>
 				:host {
 					display: block;
@@ -459,10 +560,7 @@ class AutoApp extends HTMLElement {
 					height: 100%;
 
 					/* Make the Lume scene visibly hidden because we're rendering with the Sumerian scene. */
-					opacity: ${renderWithLume ? '1' : '0.000001'};
-
-					/* If we're not using the Lume camera, we can completely hide the Lume scene, otherwise we make it practically invisible with tiny opacity so that it will catch pointer events for Lume's camera functionality. */
-					${useLumeCamera ? '' : 'display: none;'}
+					opacity: 1;
 				}
 
 				#ui {
@@ -528,114 +626,19 @@ class AutoApp extends HTMLElement {
 		`
 	}
 
-	// Set up base scene
-	createScene() {
-		// Base scene
-		const scene = new THREE.Scene()
-		scene.background = new THREE.Color(0x33334d)
-		scene.fog = new THREE.Fog(0x33334d, 0, 10)
+	// Set up the Sumerian scene
+	createSumerianContainer() {
+		// Sumerian code puts its content inside this.
+		const scene = new THREE.Group()
 
-		this.lumeScene = this.shadowRoot?.querySelector('lume-scene')
+		this.lumeScene = /** @type {Scene} */ (this.shadowRoot?.querySelector('lume-scene'))
 
-		// Render one scene in the other
-		if (renderWithLume) {
-			// (rendering the Sumerian scene in the Lume scene doesn't work currently due to version differences of Threejs libs)
-			this.lumeScene.three.children.push(scene)
-		} else {
-			scene.children.push(this.lumeScene.three)
-		}
+		// Render the Sumerian content inside of the Lume scene.
+		this.lumeScene.three.children.push(scene)
 
 		const clock = new THREE.Clock()
 
-		// Renderer
-		const renderer = new THREE.WebGLRenderer({ antialias: true })
-		renderer.setPixelRatio(window.devicePixelRatio)
-		renderer.setSize(window.innerWidth, window.innerHeight)
-		renderer.outputEncoding = THREE.sRGBEncoding
-		renderer.shadowMap.enabled = true
-		renderer.setClearColor(0x33334d)
-		renderer.domElement.id = 'renderCanvas'
-		this.shadowRoot.getElementById('scene').append(renderer.domElement)
-
-		if (!renderWithLume) {
-			// Enable XR
-			renderer.xr.enabled = true
-			const button = VRButton.createButton(renderer)
-			button.style = 'position: unset;'
-			this.shadowRoot.getElementById('ui')?.append(button)
-		}
-
-		// Env map
-		new THREE.TextureLoader().setPath('/assets/').load('images/machine_shop.jpg', hdrEquirect => {
-			const hdrCubeRenderTarget = pmremGenerator.fromEquirectangular(hdrEquirect)
-			hdrEquirect.dispose()
-			pmremGenerator.dispose()
-
-			scene.environment = hdrCubeRenderTarget.texture
-		})
-
-		const pmremGenerator = new THREE.PMREMGenerator(renderer)
-		pmremGenerator.compileEquirectangularShader()
-
-		// Camera
-		const camera = new THREE.PerspectiveCamera(
-			THREE.MathUtils.radToDeg(0.8),
-			window.innerWidth / window.innerHeight,
-			0.1,
-			1000,
-		)
-		camera.position.set(0, 0.75, 3.1)
-		const controls = new OrbitControls(camera, renderer.domElement)
-		controls.enableDamping = true
-		controls.target = new THREE.Vector3(0, 0.8, 0)
-		controls.screenSpacePanning = true
-		controls.update()
-
-		// Handle window resize
-		const onWindowResize = () => {
-			camera.aspect = window.innerWidth / window.innerHeight
-			camera.updateProjectionMatrix()
-			renderer.setSize(window.innerWidth, window.innerHeight)
-		}
-		window.addEventListener('resize', onWindowResize, false)
-
-		// Render loop
-		const loop = () => {
-			controls.update()
-
-			renderFn.forEach(fn => {
-				fn()
-			})
-
-			if (renderWithLume) {
-				// Skip rendering with the Sumerian Three.js renderer.
-			} else {
-				if (useLumeCamera) {
-					// Render with Lume's camera
-					renderer.render(scene, this.lumeScene?.camera.three)
-				} else {
-					// Render with the original Sumerian camera.
-					renderer.render(scene, camera)
-				}
-			}
-		}
-
-		queueMicrotask(() => this.animationLoopUpdates.push(loop))
-
-		// If we're rendering with the Lume scene, we should hook into its own
-		// loop system so that when WebXR is enabled we're hooked into its XR
-		// loop.
-		if (renderWithLume) {
-			Motor.addRenderTask(time => {
-				for (const fn of this.animationLoopUpdates) fn(time)
-			})
-		} else {
-			// Add this callback in a microtask so that render happens last after
-			// any other callbacks.
-			renderer.setAnimationLoop(time => {
-				for (const fn of this.animationLoopUpdates) fn(time)
-			})
-		}
+		// TODO move `hemiLight` and `ground` to Lume HTML.
 
 		// Lights
 		const hemiLight = new THREE.HemisphereLight(0xffffff, 0x000000, 0.6)
@@ -643,27 +646,16 @@ class AutoApp extends HTMLElement {
 		hemiLight.intensity = 0.6
 		scene.add(hemiLight)
 
-		// Environment
-		const groundMat = new THREE.MeshStandardMaterial({
-			color: 0x808080,
-			depthWrite: false,
-		})
-		groundMat.metalness = 0
-		groundMat.refractionRatio = 0
-		const ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), groundMat)
-		ground.rotation.x = -Math.PI / 2
-		ground.receiveShadow = true
-		scene.add(ground)
-
 		const lumeCamera = this.lumeScene?.camera.three
 
-		return { scene, camera: renderWithLume ? lumeCamera : useLumeCamera ? lumeCamera : camera, clock }
+		// The Sumerian code will have the characters automatically lookAt the
+		// `camera` that is specified here.
+		return { scene, camera: lumeCamera, clock }
 	}
 
 	// Load character model and animations
 	async loadCharacter(scene, characterFile, animationPath, animationFiles) {
 		// Asset loader
-		const fileLoader = new THREE.FileLoader()
 		const gltfLoader = new GLTFLoader()
 
 		const loadAsset = (loader, assetPath, onLoad) => {
@@ -738,9 +730,8 @@ class AutoApp extends HTMLElement {
 	) {
 		// Add the host to the render loop
 		const host = new HOST.HostObject({ owner: character, clock })
-		renderFn.push(() => {
-			host.update()
-		})
+
+		Motor.addRenderTask(() => host.update())
 
 		// Set up text to speech
 		const audioListener = new THREE.AudioListener()
