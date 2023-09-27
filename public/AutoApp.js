@@ -247,19 +247,17 @@ class AutoApp extends HTMLElement {
 				return false
 			}
 
-			let new_y = -4*((elapsedTime - 0.5) ** 2) + 1
+			let new_y = -4 * (elapsedTime - 0.5) ** 2 + 1
 			cameraRoot.position.y = -(new_y + 1.1)
-
 		})
 	}
 
 	setupControls() {
-
 		let isJumping = false
 
 		document.addEventListener('keydown', event => {
 			this.downKeys.add(event.key)
-		
+
 			if (this.downKeys.has(' ') && !isJumping) {
 				isJumping = true
 				this.triggerJump()
