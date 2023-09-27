@@ -35,6 +35,9 @@ const useLumeCamera = true
  */
 const cssTransformsForDebug = false
 
+/** Height of the player camera from the ground. */
+const playerHeight = 1.6
+
 const renderFn = []
 const speakers = new Map([
 	['Luke', undefined],
@@ -224,48 +227,39 @@ class AutoApp extends HTMLElement {
 
 	downKeys = new Set()
 
+	isJumping = false
+
 	triggerJump() {
+		if (this.isJumping) return
+		this.isJumping = true
+
 		const camera = this.shadowRoot?.querySelector('lume-perspective-camera')
 
 		const cameraRoot = camera?.parentElement
 
 		const startTime = performance.now()
 		console.log('TRIGGER JUMP')
-		let lastTime = 0
 
 		Motor.addRenderTask(() => {
 			const currentTime = performance.now()
 			const elapsedTime = (currentTime - startTime) / 1000
-			console.log('time:', startTime, elapsedTime)
-
-			//debugging
-			// if (currentTime < lastTime) debugger
-			// lastTime = currentTime
 
 			if (elapsedTime >= 1) {
-				cameraRoot.position.y = -1.1
+				this.isJumping = false
+				cameraRoot.position.y = -playerHeight
 				return false
 			}
 
 			let new_y = -4 * (elapsedTime - 0.5) ** 2 + 1
-			cameraRoot.position.y = -(new_y + 1.1)
+			cameraRoot.position.y = -(new_y + playerHeight)
 		})
 	}
 
 	setupControls() {
-		let isJumping = false
-
 		document.addEventListener('keydown', event => {
 			this.downKeys.add(event.key)
 
-			if (this.downKeys.has(' ') && !isJumping) {
-				isJumping = true
-				this.triggerJump()
-
-				setTimeout(() => {
-					isJumping = false // Reset the flag after the animation duration
-				}, 1000)
-			}
+			if (this.downKeys.has(' ')) this.triggerJump()
 		})
 		document.addEventListener('keyup', event => {
 			this.downKeys.delete(event.key)
@@ -277,7 +271,6 @@ class AutoApp extends HTMLElement {
 		// Every animation frame, move the camera if WASD keys are held.
 		const loop = () => {
 			const speed = 0.05
-			const jumpHeight = 0.1 // Define how much the camera moves up when jumping
 			const crouchHeight = 0.1 // Define how much the camera moves down when crouching
 
 			if (this.downKeys.has('w')) {
@@ -353,7 +346,7 @@ class AutoApp extends HTMLElement {
 							position="0 -0.65"
 						></lume-camera-rig>-->
 
-						<lume-element3d position="0 -1.4 2" >
+						<lume-element3d position="0 -${playerHeight} 2" >
 							<lume-perspective-camera active></lume-perspective-camera>
 						</lume-element3d>
 
