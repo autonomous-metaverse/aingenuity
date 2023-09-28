@@ -13,10 +13,11 @@ import {
 	PerspectiveCamera,
 	Scene,
 	createEffect,
-	createSignal,
 	defineElements,
 	html,
-	children,
+	onMount,
+	onCleanup,
+	untrack,
 } from 'lume'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import throttle from 'lodash-es/throttle.js'
@@ -484,14 +485,10 @@ class AutoApp extends HTMLElement {
 							</lume-element3d>
 
 							<!-- prettier-ignore -->
-							<${Index} each=${() => this.state.playerStates}>${s => html`
-								<lume-element3d
-									visible=${() => this.state.user && s()._id !== this.state.user._id}
-									position=${() => [s().p.x, s().p.y, s().p.z]}
-									rotation=${() => [0, s().r.y, 0]}
-								>
-									<lume-box rotation=${() => [s().r.x, 0, 0]} size="0.3 0.3 0.3" mount-point="0.5 0.5 0.5"></lume-box>
-								</lume-element3d>
+							<${Index} each=${() => this.state.playerStates}>${state => html`
+								<!-- prettier-ignore -->
+								<${Player} state=${state} visible=${() => this.state.user && state()._id !== this.state.user._id}>
+								</>
 							`}</>
 
 							<lume-directional-light
@@ -1173,3 +1170,46 @@ class AutoApp extends HTMLElement {
 }
 
 customElements.define('auto-app', AutoApp)
+
+/**
+ * @param {{ state: PlayerStateDocument, visible: boolean }} props
+ */
+function Player(props) {
+	const animated = createMutable({
+		p: { x: 0, y: 0, z: 0 },
+		r: { x: 0, y: 0 },
+	})
+
+	let mounted = false
+
+	onMount(() => {
+		mounted = true
+
+		Motor.addRenderTask(() => {
+			if (!mounted) return false
+
+			untrack(() => {
+				// Linear interpolation
+				animated.p.x += 0.1 * (props.state.p.x - animated.p.x)
+				animated.p.y += 0.1 * (props.state.p.y - animated.p.y)
+				animated.p.z += 0.1 * (props.state.p.z - animated.p.z)
+				animated.r.x += 0.1 * (props.state.r.x - animated.r.x)
+				animated.r.y += 0.1 * (props.state.r.y - animated.r.y)
+			})
+		})
+	})
+
+	onCleanup(() => {
+		mounted = false
+	})
+
+	return html`
+		<lume-element3d
+			visible=${() => props.visible}
+			position=${() => [animated.p.x, animated.p.y, animated.p.z]}
+			rotation=${() => [0, animated.r.y, 0]}
+		>
+			<lume-box rotation=${() => [animated.r.x, 0, 0]} size="0.3 0.3 0.3" mount-point="0.5 0.5 0.5"></lume-box>
+		</lume-element3d>
+	`
+}
