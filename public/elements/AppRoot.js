@@ -1,5 +1,5 @@
 // @ts-check
-import './make-three-global.js'
+import '../make-three-global.js'
 import { createMutable } from 'solid-js/store'
 import { batch } from 'solid-js'
 import { Meteor } from 'meteor/meteor'
@@ -21,8 +21,8 @@ import {
 } from 'lume'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import throttle from 'lodash-es/throttle.js'
-import { Recorder } from './audio.js'
-import { PlayerStates } from './PlayerStates.js'
+import { Recorder } from '../audio.js'
+import { PlayerStates } from '../PlayerStates.js'
 
 /////////////////////////////////
 
@@ -33,7 +33,7 @@ import { PlayerStates } from './PlayerStates.js'
 
 // Load the global "HOST" API from the build file copied over from the build
 // output of the Amazon Sumerian three.js demo.
-const { loadNonModuleScript } = await import('./utils/loadNonModuleScript.js')
+const { loadNonModuleScript } = await import('../utils/loadNonModuleScript.js')
 await loadNonModuleScript('/host.three.js')
 
 /////////////////////////////////
@@ -41,11 +41,11 @@ await loadNonModuleScript('/host.three.js')
 defineElements()
 
 /**
- * @typedef {import('./PlayerStates.js').PlayerState} PlayerState
+ * @typedef {import('../PlayerStates.js').PlayerState} PlayerState
  */
 
 /**
- * @typedef {import('./PlayerStates.js').PlayerStateDocument} PlayerStateDocument
+ * @typedef {import('../PlayerStates.js').PlayerStateDocument} PlayerStateDocument
  */
 
 /**
@@ -64,7 +64,7 @@ const speakers = new Map([
 	['Alien', undefined],
 ])
 
-class AutoApp extends HTMLElement {
+class AppRoot extends HTMLElement {
 	state = createMutable({
 		/** @type {PlayerStateDocument[]} */
 		playerStates: [],
@@ -1169,7 +1169,7 @@ class AutoApp extends HTMLElement {
 	}
 }
 
-customElements.define('auto-app', AutoApp)
+customElements.define('app-root', AppRoot)
 
 /**
  * @param {{ state: PlayerStateDocument, visible: boolean }} props
