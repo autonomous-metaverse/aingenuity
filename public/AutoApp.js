@@ -63,8 +63,6 @@ const speakers = new Map([
 	['Alien', undefined],
 ])
 
-export let controlSpeech = null
-
 class AutoApp extends HTMLElement {
 	state = createMutable({
 		/** @type {PlayerStateDocument[]} */
@@ -393,53 +391,58 @@ class AutoApp extends HTMLElement {
 		})
 	}
 
+	/** @type {HTMLInputElement} */
+	input
+
+	sendMessage(e) {
+		e.preventDefault()
+
+		this.controlSpeech('stop')
+
+		Meteor.call('sendMessage', this.input.value, (error, result) => {
+			if (error) throw error
+			this.textToSpeech(result)
+		})
+		this.input.value = ''
+	}
+
+	textToSpeech(text) {
+		this.state.response = text
+		this.controlSpeech('play', text)
+	}
+
+	async recordAndSendAudio() {
+		this.controlSpeech('stop')
+
+		const rec = new Recorder()
+
+		// Stop after 4 seconds (TODO detect the audio to capture between silences)
+		setTimeout(() => rec.stop(), 4000)
+
+		/** @type {Blob} */
+		const blob = await new Promise(r => rec.recordAudio(r))
+
+		Meteor.call('sendAudio', { audio: new Uint8Array(await blob.arrayBuffer()) }, (error, result) => {
+			if (error) throw error
+			this.textToSpeech(result)
+		})
+	}
+
 	makeDOM() {
+		/** @type {HTMLDivElement} */
 		let speakContent
+
+		/** @type {HTMLDivElement} */
 		let style
 
 		// Render Meteor's Blaze-based login UI component into a div so we can use it in our template.
+		/** @type {HTMLDivElement} */
 		let loginBox = html`<div></div>`
 		Blaze.render(Template.loginButtons, loginBox)
 
 		// We append this as a light DOM child because Meteor's API depends on
 		// styling and referencing the login UI from the top level document.
 		this.append(loginBox)
-
-		let input
-
-		function sendMessage(e) {
-			e.preventDefault()
-
-			controlSpeech('stop')
-
-			Meteor.call('sendMessage', input.value, (error, result) => {
-				if (error) throw error
-				textToSpeech(result)
-			})
-			input.value = ''
-		}
-
-		function textToSpeech(text) {
-			state.response = text
-			controlSpeech('play', text)
-		}
-
-		async function recordAndSendAudio() {
-			controlSpeech('stop')
-
-			const rec = new Recorder()
-
-			// Stop after 4 seconds (TODO detect the audio to capture between silences)
-			setTimeout(() => rec.stop(), 4000)
-
-			/** @type {Blob} */
-			const blob = await new Promise(r => rec.recordAudio(r))
-
-			Meteor.call('sendAudio', { audio: new Uint8Array(await blob.arrayBuffer()) }, (error, result) => {
-				if (error) throw error
-				textToSpeech(result)
-			})
-		}
 
 		// const el = document.createElement('lume-directional-light')
 		// this.shadowRoot.innerHTML = /*html*/ `
@@ -541,13 +544,13 @@ class AutoApp extends HTMLElement {
 
 						<slot>${'' /* The loginBox gets slotted here from light DOM */}</slot>
 
-						<form onsubmit=${sendMessage} style=${() => (this.state.user ? '' : 'display: none')}>
-							<input ref=${el => (input = el)} type="text" placeholder="Write message, hit enter." />
+						<form onsubmit=${this.sendMessage} style=${() => (this.state.user ? '' : 'display: none')}>
+							<input ref=${el => (this.input = el)} type="text" placeholder="Write message, hit enter." />
 						</form>
 
 						<div>${() => this.state.response}</div>
 
-						<button onclick=${recordAndSendAudio}>record</button>
+						<button onclick=${this.recordAndSendAudio}>record</button>
 					</div>
 
 					${'' /*Text to speech controls*/}
@@ -1080,6 +1083,16 @@ class AutoApp extends HTMLElement {
 		})
 	}
 
+	/**
+	 * @param {'play' | 'pause' | 'resume' | 'stop'} action
+	 * @param {string=} text The text to play. If not given, plays whatever
+	 * text was given last time.
+	 * @returns {void}
+	 */
+	controlSpeech = (action, text) => {
+		throw new Error('Not ready yet.')
+	}
+
 	initializeUX(speakers) {
 		// Enable drag/drop text files on the speech text area
 		this.enableDragDrop('textEntry')
@@ -1095,15 +1108,10 @@ class AutoApp extends HTMLElement {
 		// when buttons are clicked
 		;['play', 'pause', 'resume', 'stop'].forEach(id => {
 			const button = this.shadowRoot.getElementById(id)
-			button.onclick = () => controlSpeech(id)
+			button.onclick = () => this.controlSpeech(id)
 		})
 
-		/**
-		 * @param {'play' | 'pause' | 'resume' | 'stop'} action
-		 * @param {string=} text The text to play. If not given, plays whatever
-		 * text was given last time.
-		 */
-		controlSpeech = (action, text) => {
+		this.controlSpeech = (action, text) => {
 			const { name, host } = this.getCurrentHost(speakers)
 			const textarea = this.shadowRoot.querySelector(`.textEntry.${name}`)
 			if (text) textarea.value = text
