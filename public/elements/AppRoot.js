@@ -395,7 +395,7 @@ class AppRoot extends HTMLElement {
 	/** @type {HTMLInputElement} */
 	input
 
-	sendMessage(e) {
+	sendMessage = e => {
 		e.preventDefault()
 
 		this.controlSpeech('stop')
@@ -412,7 +412,7 @@ class AppRoot extends HTMLElement {
 		this.controlSpeech('play', text)
 	}
 
-	async recordAndSendAudio() {
+	recordAndSendAudio = async () => {
 		this.controlSpeech('stop')
 
 		const rec = new Recorder()
