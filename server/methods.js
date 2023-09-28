@@ -103,6 +103,14 @@ Meteor.methods({
 
 		if (!id) throw new Error('Not logged in.')
 
-		PlayerStates.upsert({ _id: id }, playerState)
+		PlayerStates.upsert(
+			{ _id: id },
+			{
+				...playerState,
+
+				// Use backend time to avoid clients hacking it.
+				t: Date.now(),
+			},
+		)
 	},
 })

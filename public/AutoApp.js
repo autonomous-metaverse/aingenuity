@@ -1,7 +1,11 @@
 // @ts-check
 import './make-three-global.js'
+import { createMutable } from 'solid-js/store'
+import { batch } from 'solid-js'
 import { Meteor } from 'meteor/meteor'
 import { Tracker } from 'meteor/tracker'
+import { Blaze } from 'meteor/blaze'
+import { Template } from 'meteor/templating'
 import {
 	Element3D,
 	Index,
@@ -12,9 +16,11 @@ import {
 	createSignal,
 	defineElements,
 	html,
+	children,
 } from 'lume'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import throttle from 'lodash-es/throttle.js'
+import { Recorder } from './audio.js'
 import { PlayerStates } from './PlayerStates.js'
 
 /////////////////////////////////
@@ -60,10 +66,18 @@ const speakers = new Map([
 export let controlSpeech = null
 
 class AutoApp extends HTMLElement {
-	/** @type {ReturnType<typeof createSignal<PlayerStateDocument[]>>} */
-	#playerStates = createSignal([])
-	playerStates = this.#playerStates[0]
-	setPlayerStates = this.#playerStates[1]
+	state = createMutable({
+		/** @type {PlayerStateDocument[]} */
+		playerStates: [],
+
+		response: '',
+
+		/** @type {ReturnType<Meteor['user']>} */
+		user: null,
+
+		/** @type {string | null} */
+		userId: null,
+	})
 
 	constructor() {
 		super()
@@ -72,6 +86,13 @@ class AutoApp extends HTMLElement {
 
 	async connectedCallback() {
 		this.makeDOM()
+
+		Tracker.autorun(() => {
+			batch(() => {
+				this.state.user = Meteor.user()
+				this.state.userId = Meteor.userId()
+			})
+		})
 
 		// Increment rotation by a small number of degrees every frame.
 		const box = this.shadowRoot?.querySelector('lume-box')
@@ -255,17 +276,16 @@ class AutoApp extends HTMLElement {
 		let playerState = {
 			r: { x: camera.rotation.x, y: cameraRoot.rotation.y },
 			p: { x: cameraRoot.position.x, y: cameraRoot.position.y, z: cameraRoot.position.z },
+			t: Date.now(),
 		}
 
-		const updatePlayerState = throttle(() => {
-			console.log('playerState throttled:', playerState)
-			Meteor.call('updatePlayerState', playerState)
-		}, 200)
+		const updatePlayerState = throttle(() => Meteor.call('updatePlayerState', playerState), 200)
 
 		createEffect(() => {
 			playerState = {
 				r: { x: camera.rotation.x, y: cameraRoot.rotation.y },
 				p: { x: cameraRoot.position.x, y: cameraRoot.position.y, z: cameraRoot.position.z },
+				t: Date.now(),
 			}
 
 			updatePlayerState()
@@ -281,11 +301,7 @@ class AutoApp extends HTMLElement {
 
 			PlayerStates.find().forEach(state => playerStates.push(state))
 
-			this.setPlayerStates(playerStates)
-		})
-
-		createEffect(() => {
-			console.log('synced player states:', this.playerStates())
+			this.state.playerStates = playerStates
 		})
 	}
 
@@ -298,11 +314,8 @@ class AutoApp extends HTMLElement {
 		this.isJumping = true
 
 		const camera = this.shadowRoot?.querySelector('lume-perspective-camera')
-
 		const cameraRoot = camera?.parentElement
-
 		const startTime = performance.now()
-		console.log('TRIGGER JUMP')
 
 		Motor.addRenderTask(() => {
 			const currentTime = performance.now()
@@ -384,6 +397,50 @@ class AutoApp extends HTMLElement {
 		let speakContent
 		let style
 
+		// Render Meteor's Blaze-based login UI component into a div so we can use it in our template.
+		let loginBox = html`<div></div>`
+		Blaze.render(Template.loginButtons, loginBox)
+
+		// We append this as a light DOM child because Meteor's API depends on
+		// styling and referencing the login UI from the top level document.
+		this.append(loginBox)
+
+		let input
+
+		function sendMessage(e) {
+			e.preventDefault()
+
+			controlSpeech('stop')
+
+			Meteor.call('sendMessage', input.value, (error, result) => {
+				if (error) throw error
+				textToSpeech(result)
+			})
+			input.value = ''
+		}
+
+		function textToSpeech(text) {
+			state.response = text
+			controlSpeech('play', text)
+		}
+
+		async function recordAndSendAudio() {
+			controlSpeech('stop')
+
+			const rec = new Recorder()
+
+			// Stop after 4 seconds (TODO detect the audio to capture between silences)
+			setTimeout(() => rec.stop(), 4000)
+
+			/** @type {Blob} */
+			const blob = await new Promise(r => rec.recordAudio(r))
+
+			Meteor.call('sendAudio', { audio: new Uint8Array(await blob.arrayBuffer()) }, (error, result) => {
+				if (error) throw error
+				textToSpeech(result)
+			})
+		}
+
 		// const el = document.createElement('lume-directional-light')
 		// this.shadowRoot.innerHTML = /*html*/ `
 		this.shadowRoot.append(
@@ -402,21 +459,21 @@ class AutoApp extends HTMLElement {
 					>
 						${
 							'' /*
-					Align the Lume scene with the Sumerian Threejs scene.
-					We may remove this when we update Lume so its default origin aligns with Three.js.
-					*/
+							Align the Lume scene with the Sumerian Threejs scene.
+							We may remove this when we update Lume so its default origin aligns with Three.js.
+							*/
 						}
 						<lume-element3d align-point="0.5 0.5">
 							${
 								'' /*
-							<lume-camera-rig
-								initial-distance="3"
-								min-distance="1"
-								max-distance="100"
-								dolly-speed="0.03"
-								position="0 -0.65"
-							></lume-camera-rig>
-							*/
+								<lume-camera-rig
+									initial-distance="3"
+									min-distance="1"
+									max-distance="100"
+									dolly-speed="0.03"
+									position="0 -0.65"
+								></lume-camera-rig>
+								*/
 							}
 
 							<lume-element3d position=${[0, -playerHeight, 2]}>
@@ -424,8 +481,12 @@ class AutoApp extends HTMLElement {
 							</lume-element3d>
 
 							<!-- prettier-ignore -->
-							<${Index} each=${this.playerStates}>${s => html`
-								<lume-element3d position=${() => [s().p.x, s().p.y, s().p.z]} rotation=${() => [0, s().r.y, 0]}>
+							<${Index} each=${() => this.state.playerStates}>${s => html`
+								<lume-element3d
+									visible=${() => this.state.user && s()._id !== this.state.user._id}
+									position=${() => [s().p.x, s().p.y, s().p.z]}
+									rotation=${() => [0, s().r.y, 0]}
+								>
 									<lume-box rotation=${() => [s().r.x, 0, 0]} size="0.3 0.3 0.3" mount-point="0.5 0.5 0.5"></lume-box>
 								</lume-element3d>
 							`}</>
@@ -475,7 +536,19 @@ class AutoApp extends HTMLElement {
 				</div>
 
 				<div id="ui">
-					<slot>${'' /*Login UI from main.jsx gets slotted here.*/}</slot>
+					<div>
+						<div>Log in to chat:</div>
+
+						<slot>${'' /* The loginBox gets slotted here from light DOM */}</slot>
+
+						<form onsubmit=${sendMessage} style=${() => (this.state.user ? '' : 'display: none')}>
+							<input ref=${el => (input = el)} type="text" placeholder="Write message, hit enter." />
+						</form>
+
+						<div>${() => this.state.response}</div>
+
+						<button onclick=${recordAndSendAudio}>record</button>
+					</div>
 
 					${'' /*Text to speech controls*/}
 					<div id="textToSpeech" class="hidden">
