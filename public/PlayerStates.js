@@ -18,7 +18,6 @@ if (Meteor.isServer) {
 			const states = /** @type {PlayerStateDocument[]} */ (PlayerStates.find().fetch())
 
 			for (const state of states) {
-				console.log(' Delete inactive player ------------------------ ', state._id)
 				if (Date.now() - state.t > 10_000) PlayerStates.remove({ _id: state._id })
 			}
 		}),

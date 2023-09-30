@@ -6,19 +6,7 @@ import { Meteor } from 'meteor/meteor'
 import { Tracker } from 'meteor/tracker'
 import { Blaze } from 'meteor/blaze'
 import { Template } from 'meteor/templating'
-import {
-	Element3D,
-	Index,
-	Motor,
-	PerspectiveCamera,
-	Scene,
-	createEffect,
-	defineElements,
-	html,
-	onMount,
-	onCleanup,
-	untrack,
-} from 'lume'
+import { Element3D, Index, Motor, PerspectiveCamera, Scene, createEffect, defineElements, html, element } from 'lume'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import throttle from 'lodash-es/throttle.js'
 import { Recorder } from '../audio.js'
@@ -253,7 +241,12 @@ class AppRoot extends HTMLElement {
 		this.shadowRoot.getElementById('ui').classList.remove('hidden')
 		this.shadowRoot.getElementById('loadScreen').classList.add('hidden')
 
-		await speechInit
+		try {
+			await speechInit
+		} catch (e) {
+			// log the error instead of throwing so we at least get interactivity while seeing the error in console.
+			console.error(e)
+		}
 
 		speakers.set('Luke', host1)
 		speakers.set('Alien', host2)
@@ -486,9 +479,10 @@ class AppRoot extends HTMLElement {
 
 							<!-- prettier-ignore -->
 							<${Index} each=${() => this.state.playerStates}>${state => html`
-								<!-- prettier-ignore -->
-								<${Player} state=${state} visible=${() => this.state.user && state()._id !== this.state.user._id}>
-								</>
+								<player-avatar
+									state=${() => state()}
+									visible=${() => state()._id !== this.state.user?._id}
+								></player-avatar>
 							`}</>
 
 							<lume-directional-light
@@ -1171,45 +1165,41 @@ class AppRoot extends HTMLElement {
 
 customElements.define('app-root', AppRoot)
 
-/**
- * @param {{ state: PlayerStateDocument, visible: boolean }} props
- */
-function Player(props) {
-	const animated = createMutable({
-		p: { x: 0, y: 0, z: 0 },
-		r: { x: 0, y: 0 },
-	})
+export const PlayerAvatar = element('player-avatar')(
+	class PlayerAvatar extends Element3D {
+		static observedAttributes = {
+			state: {},
+		}
 
-	let mounted = false
+		state = { r: { x: 0, y: 0 }, p: { x: 0, y: 0, z: 0 }, t: Date.now() }
+		#animated = createMutable({ p: { x: 0, y: 0, z: 0 }, r: { x: 0, y: 0 } })
 
-	onMount(() => {
-		mounted = true
+		connectedCallback() {
+			super.connectedCallback()
 
-		Motor.addRenderTask(() => {
-			if (!mounted) return false
+			Motor.addRenderTask(() => {
+				if (!this.isConnected) return false
 
-			untrack(() => {
 				// Linear interpolation
-				animated.p.x += 0.1 * (props.state.p.x - animated.p.x)
-				animated.p.y += 0.1 * (props.state.p.y - animated.p.y)
-				animated.p.z += 0.1 * (props.state.p.z - animated.p.z)
-				animated.r.x += 0.1 * (props.state.r.x - animated.r.x)
-				animated.r.y += 0.1 * (props.state.r.y - animated.r.y)
+				this.#animated.p.x += 0.1 * (this.state.p.x - this.#animated.p.x)
+				this.#animated.p.y += 0.1 * (this.state.p.y - this.#animated.p.y)
+				this.#animated.p.z += 0.1 * (this.state.p.z - this.#animated.p.z)
+				this.#animated.r.x += 0.1 * (this.state.r.x - this.#animated.r.x)
+				this.#animated.r.y += 0.1 * (this.state.r.y - this.#animated.r.y)
 			})
-		})
-	})
+		}
 
-	onCleanup(() => {
-		mounted = false
-	})
+		container
 
-	return html`
-		<lume-element3d
-			visible=${() => props.visible}
-			position=${() => [animated.p.x, animated.p.y, animated.p.z]}
-			rotation=${() => [0, animated.r.y, 0]}
-		>
-			<lume-box rotation=${() => [animated.r.x, 0, 0]} size="0.3 0.3 0.3" mount-point="0.5 0.5 0.5"></lume-box>
-		</lume-element3d>
-	`
-}
+		template = () => html`
+			<lume-element3d
+				ref=${el => (this.container = el)}
+				visible=${() => this.visible}
+				position=${() => [this.#animated.p.x, this.#animated.p.y, this.#animated.p.z]}
+				rotation=${() => [0, this.#animated.r.y, 0]}
+			>
+				<lume-box rotation=${() => [this.#animated.r.x, 0, 0]} size="0.3 0.3 0.3" mount-point="0.5 0.5 0.5"></lume-box>
+			</lume-element3d>
+		`
+	},
+)
