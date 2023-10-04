@@ -45,7 +45,8 @@ defineElements()
 const cssTransformsForDebug = true
 
 /** Height of the player camera from the ground. */
-const playerHeight = 1.6
+const standingPlayerHeight = 1.6
+const crouchingPlayerHeight = 0.5
 
 const speakers = new Map([
 	['Luke', undefined],
@@ -64,6 +65,9 @@ class AppRoot extends HTMLElement {
 
 		/** @type {string | null} */
 		userId: null,
+
+		/** @type {number} */
+		targetPlayerHeight: -standingPlayerHeight,
 	})
 
 	constructor() {
@@ -315,12 +319,12 @@ class AppRoot extends HTMLElement {
 
 			if (elapsedTime >= 1) {
 				this.isJumping = false
-				cameraRoot.position.y = -playerHeight
+				cameraRoot.position.y = this.state.targetPlayerHeight
 				return false
 			}
 
 			let new_y = -4 * (elapsedTime - 0.5) ** 2 + 1
-			cameraRoot.position.y = -(new_y + playerHeight)
+			cameraRoot.position.y = -(new_y + -this.state.targetPlayerHeight)
 		})
 	}
 
@@ -329,8 +333,18 @@ class AppRoot extends HTMLElement {
 			this.downKeys.add(event.key)
 
 			if (this.downKeys.has(' ')) this.triggerJump()
+
+			if (this.downKeys.has('Shift')) {
+				//start crouch
+				this.state.targetPlayerHeight = -crouchingPlayerHeight
+			}
 		})
 		document.addEventListener('keyup', event => {
+			if (event.key === 'Shift') {
+				//go back to standing
+				this.state.targetPlayerHeight = -standingPlayerHeight
+			}
+
 			this.downKeys.delete(event.key)
 		})
 
@@ -340,7 +354,7 @@ class AppRoot extends HTMLElement {
 		// Every animation frame, move the camera if WASD keys are held.
 		const loop = () => {
 			const speed = 0.05
-			const crouchHeight = 0.1 // Define how much the camera moves down when crouching
+			cameraRoot.position.y += (this.state.targetPlayerHeight - cameraRoot.position.y) * 0.1
 
 			if (this.downKeys.has('w')) {
 				cameraRoot.position.x += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
@@ -357,11 +371,6 @@ class AppRoot extends HTMLElement {
 			if (this.downKeys.has('d')) {
 				cameraRoot.position.x -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 				cameraRoot.position.z -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-			}
-
-			//crouch
-			if (this.downKeys.has('Shift')) {
-				cameraRoot.position.y += crouchHeight // Move the camera down
 			}
 		}
 
@@ -473,7 +482,7 @@ class AppRoot extends HTMLElement {
 								*/
 							}
 
-							<lume-element3d position=${[0, -playerHeight, 2]}>
+							<lume-element3d position=${[0, -standingPlayerHeight, 2]}>
 								<lume-perspective-camera active innerHTML="<p>test</p>"></lume-perspective-camera>
 							</lume-element3d>
 
