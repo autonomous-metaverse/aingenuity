@@ -330,22 +330,22 @@ class AppRoot extends HTMLElement {
 
 	setupControls() {
 		document.addEventListener('keydown', event => {
-			this.downKeys.add(event.key)
+			this.downKeys.add(event.code)
 
-			if (this.downKeys.has(' ')) this.triggerJump()
+			if (this.downKeys.has('Space')) this.triggerJump()
 
-			if (this.downKeys.has('Shift')) {
+			if (this.downKeys.has('ShiftLeft')) {
 				//start crouch
 				this.state.targetPlayerHeight = -crouchingPlayerHeight
 			}
 		})
 		document.addEventListener('keyup', event => {
-			if (event.key === 'Shift') {
+			this.downKeys.delete(event.code)
+
+			if (event.code === 'ShiftLeft') {
 				//go back to standing
 				this.state.targetPlayerHeight = -standingPlayerHeight
 			}
-
-			this.downKeys.delete(event.key)
 		})
 
 		const camera = /** @type {PerspectiveCamera} */ (this.shadowRoot?.querySelector('lume-perspective-camera'))
@@ -353,22 +353,22 @@ class AppRoot extends HTMLElement {
 
 		// Every animation frame, move the camera if WASD keys are held.
 		const loop = () => {
-			const speed = 0.05
+			const speed = this.downKeys.has('ShiftLeft') ? 0.02 : 0.04
 			cameraRoot.position.y += (this.state.targetPlayerHeight - cameraRoot.position.y) * 0.1
 
-			if (this.downKeys.has('w')) {
+			if (this.downKeys.has('KeyW')) {
 				cameraRoot.position.x += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 				cameraRoot.position.z += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 			}
-			if (this.downKeys.has('s')) {
+			if (this.downKeys.has('KeyS')) {
 				cameraRoot.position.x -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 				cameraRoot.position.z -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 			}
-			if (this.downKeys.has('a')) {
+			if (this.downKeys.has('KeyA')) {
 				cameraRoot.position.x += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 				cameraRoot.position.z += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 			}
-			if (this.downKeys.has('d')) {
+			if (this.downKeys.has('KeyD')) {
 				cameraRoot.position.x -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 				cameraRoot.position.z -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 			}
