@@ -17,11 +17,14 @@ const openai = new OpenAIApi(configuration)
 
 let i = 0
 
-ChatContext.remove({})// temporary
+ChatContext.remove({}) // temporary
 
 // Basically Meteor's RPC feature. Arguments can be EJSON (JSON with extensions
 // like typed binary arrays).
 Meteor.methods({
+	/**
+	 * @param {string} msg
+	 */
 	async sendMessage(msg) {
 		if (!Meteor.userId()) throw new Error('Not logged in.')
 
@@ -45,7 +48,6 @@ Meteor.methods({
 			// TODO: add AI_agent ID to keep context for each agent
 			if (!id) throw new Error('Not logged in. Cannot save context.')
 
-
 			ChatContext.upsert(
 				{
 					_id: id,
@@ -57,12 +59,12 @@ Meteor.methods({
 					t: Date.now(),
 				},
 			)
-			
+
 			//test
 			// if (ChatContext) {
 			// 	console.log(ChatContext.find().fetch())
 			// }
-			
+
 			// Add to ChatContext Collection
 			return response.data.choices[0].message.content
 		} catch (e) {

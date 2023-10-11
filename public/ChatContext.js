@@ -25,3 +25,12 @@ if (Meteor.isServer) {
 } else {
 	Meteor.subscribe('ChatContext')
 }
+
+/**
+ * @typedef {{
+ *   _msg: string
+ *   _response: string
+ * }} ChatContext
+ */
+
+/** @typedef {ChatContext & {_id: string}} ChatContextDocument */
