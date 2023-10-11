@@ -5,6 +5,7 @@ import { createReadStream, promises } from 'fs'
 import { Readable } from 'stream'
 import { File, Blob } from 'web-file-polyfill'
 import { PlayerStates } from '../public/PlayerStates'
+import { ChatContext } from '../public/ChatContext'
 
 const { open, writeFile } = promises
 
@@ -15,6 +16,8 @@ const configuration = new Configuration({ apiKey: openaiKey })
 const openai = new OpenAIApi(configuration)
 
 let i = 0
+
+ChatContext.remove({})// temporary
 
 // Basically Meteor's RPC feature. Arguments can be EJSON (JSON with extensions
 // like typed binary arrays).
@@ -37,6 +40,30 @@ Meteor.methods({
 			// If timed out.
 			if (!response) throw 'timed out'
 
+			const id = Meteor.userId()
+
+			// TODO: add AI_agent ID to keep context for each agent
+			if (!id) throw new Error('Not logged in. Cannot save context.')
+
+
+			ChatContext.upsert(
+				{
+					_id: id,
+				},
+				{
+					_msg: msg,
+					_response: response.data.choices[0].message.content,
+					// Use backend time to avoid clients hacking it.
+					t: Date.now(),
+				},
+			)
+			
+			//test
+			// if (ChatContext) {
+			// 	console.log(ChatContext.find().fetch())
+			// }
+			
+			// Add to ChatContext Collection
 			return response.data.choices[0].message.content
 		} catch (e) {
 			return 'Error 500: something went wrong.'
@@ -47,35 +74,7 @@ Meteor.methods({
 	 * @param {{audio: Uint8Array}} msg
 	 */
 	async sendAudio(msg) {
-		// Attempt 1
-		// Doesn't work, there is no File in Node.js (only browsers), but that's
-		// what the openai type definition tells us to use.
-		// const audioFile = new File(msg.audio)
-		// const r = await openai.createTranscription(audioFile)
-
-		// Attempt 2, use a buffer
-		// No luck, these all get an error 400 back from openai.
-		// Maybe we need to specify the MIME type somehow.
-		//
-		// const buffer = Buffer.from(msg.audio)
-		// const r = await openai.createTranscription(buffer, 'whisper-1') // error 400
-		//
-		// const buffer = Buffer.from(msg.audio)
-		// const r = await openai.createTranscription(Readable.from(buffer), 'whisper-1') // error 400
-		//
-		// const buffer = Buffer.from(msg.audio)
-		// const readable = new Readable()
-		// readable._read = () => {} // _read is required but you can noop it
-		// readable.push(buffer)
-		// readable.push(null)
-		// const r = await openai.createTranscription(readable, 'whisper-1') // error 400
-
-		// Attempt 3, using a File polyfill, which satisfies the openai type def,
-		// but doesn't work ("TypeError: source.on is not a function")
-		// const r = await openai.createTranscription(
-		// 	new File([msg.audio], 'recording.webm', { type: 'audio/webm' }),
-		// 	'whisper-1',
-		// )
+		// Several commented attempts indicate various ways the developer tried to handle audio transcription.
 
 		// Attempt 4, this works, but it is pretty bad because we have to write
 		// the file to disk just to read it back. Presumably this works because
@@ -104,10 +103,11 @@ Meteor.methods({
 		if (!id) throw new Error('Not logged in.')
 
 		PlayerStates.upsert(
-			{ _id: id },
+			{
+				_id: id,
+			},
 			{
 				...playerState,
-
 				// Use backend time to avoid clients hacking it.
 				t: Date.now(),
 			},
