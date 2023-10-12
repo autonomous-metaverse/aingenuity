@@ -11,7 +11,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import throttle from 'lodash-es/throttle.js'
 import { Recorder } from '../audio.js'
 import { PlayerStates } from '../PlayerStates.js'
-//import { text } from 'stream/consumers'
 
 /////////////////////////////////
 
