@@ -331,20 +331,6 @@ class AppRoot extends HTMLElement {
 		})
 	}
 
-	// check_focus() {
-	// 	const text_input = document.querySelector('input[type="text"]')
-
-	// 	if (text_input) {
-	// 		text_input.addEventListener('focusin', event => {
-	// 			this.isFocused = true
-	// 		})
-
-	// 		text_input.addEventListener('focusout', event => {
-	// 			this.isFocused = false
-	// 		})
-	// 	}
-	// }
-
 	setupControls() {
 		document.addEventListener('keydown', event => {
 			//return early if focused
