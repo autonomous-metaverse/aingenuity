@@ -11,6 +11,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import throttle from 'lodash-es/throttle.js'
 import { Recorder } from '../audio.js'
 import { PlayerStates } from '../PlayerStates.js'
+//import { text } from 'stream/consumers'
 
 /////////////////////////////////
 
@@ -68,6 +69,9 @@ class AppRoot extends HTMLElement {
 
 		/** @type {number} */
 		targetPlayerHeight: -standingPlayerHeight,
+
+		/** @type {boolean | false} */
+		isFocused: false,
 	})
 
 	constructor() {
@@ -328,8 +332,27 @@ class AppRoot extends HTMLElement {
 		})
 	}
 
+	// check_focus() {
+	// 	const text_input = document.querySelector('input[type="text"]')
+
+	// 	if (text_input) {
+	// 		text_input.addEventListener('focusin', event => {
+	// 			this.isFocused = true
+	// 		})
+
+	// 		text_input.addEventListener('focusout', event => {
+	// 			this.isFocused = false
+	// 		})
+	// 	}
+	// }
+
 	setupControls() {
 		document.addEventListener('keydown', event => {
+			//return early if focused
+			if (this.state.isFocused) {
+				return
+			}
+
 			this.downKeys.add(event.code)
 
 			if (this.downKeys.has('Space')) this.triggerJump()
@@ -545,7 +568,13 @@ class AppRoot extends HTMLElement {
 						<slot>${'' /* The loginBox gets slotted here from light DOM */}</slot>
 
 						<form onsubmit=${this.sendMessage} style=${() => (this.state.user ? '' : 'display: none')}>
-							<input ref=${el => (this.input = el)} type="text" placeholder="Write message, hit enter." />
+							<input
+								ref=${el => (this.input = el)}
+								type="text"
+								placeholder="Write message, hit enter."
+								onfocus=${() => ((this.state.isFocused = true))}
+								onblur=${() => (this.state.isFocused = false)}
+							/>
 						</form>
 
 						<div>${() => this.state.response}</div>
