@@ -100,7 +100,7 @@ Meteor.methods({
 	async updatePlayerState(playerState) {
 		const id = Meteor.userId()
 
-		if (!id) throw new Error('Not logged in.')
+		if (!id) console.error('Not logged in. Someone trying to cheat?')
 
 		PlayerStates.upsert(
 			{

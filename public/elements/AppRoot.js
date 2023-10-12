@@ -287,7 +287,10 @@ class AppRoot extends HTMLElement {
 				t: Date.now(),
 			}
 
-			updatePlayerState()
+			const loggedIn = !!Meteor.userId()
+
+			// Avoid trying to send state to backend when not logged in.
+			if (loggedIn) updatePlayerState()
 		})
 	}
 
@@ -557,7 +560,7 @@ class AppRoot extends HTMLElement {
 								ref=${el => (this.input = el)}
 								type="text"
 								placeholder="Write message, hit enter."
-								onfocus=${() => ((this.state.isFocused = true))}
+								onfocus=${() => (this.state.isFocused = true)}
 								onblur=${() => (this.state.isFocused = false)}
 							/>
 						</form>
