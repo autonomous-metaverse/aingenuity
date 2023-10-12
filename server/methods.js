@@ -15,8 +15,6 @@ if (!openaiKey) throw new Error('Follow instructions in README.md to add keys to
 const configuration = new Configuration({ apiKey: openaiKey })
 const openai = new OpenAIApi(configuration)
 
-let i = 0
-
 ChatContext.remove({}) // temporary
 
 // Basically Meteor's RPC feature. Arguments can be EJSON (JSON with extensions
