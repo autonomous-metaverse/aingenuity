@@ -68,6 +68,9 @@ class AppRoot extends HTMLElement {
 
 		/** @type {number} */
 		targetPlayerHeight: -standingPlayerHeight,
+
+		/** @type {boolean | false} */
+		isFocused: false,
 	})
 
 	constructor() {
@@ -330,6 +333,11 @@ class AppRoot extends HTMLElement {
 
 	setupControls() {
 		document.addEventListener('keydown', event => {
+			//return early if focused
+			if (this.state.isFocused) {
+				return
+			}
+
 			this.downKeys.add(event.code)
 
 			if (this.downKeys.has('Space')) this.triggerJump()
@@ -545,7 +553,13 @@ class AppRoot extends HTMLElement {
 						<slot>${'' /* The loginBox gets slotted here from light DOM */}</slot>
 
 						<form onsubmit=${this.sendMessage} style=${() => (this.state.user ? '' : 'display: none')}>
-							<input ref=${el => (this.input = el)} type="text" placeholder="Write message, hit enter." />
+							<input
+								ref=${el => (this.input = el)}
+								type="text"
+								placeholder="Write message, hit enter."
+								onfocus=${() => ((this.state.isFocused = true))}
+								onblur=${() => (this.state.isFocused = false)}
+							/>
 						</form>
 
 						<div>${() => this.state.response}</div>
