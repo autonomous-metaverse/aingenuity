@@ -25,7 +25,9 @@
 	},
 	"// Note, we install latest node and npm only for managing dependencies in node_modules, but the Meteor itself app runs with an older Node bundled in Meteor.": "",
 	"devDependencies": {
+		"@types/lodash-es": "^4.17.9",
 		"@types/meteor": "^2.9.4",
+		"@types/three": "^0.157.0",
 		"node": "^20.0.0",
 		"npm": "^10.0.0",
 		"prettier": "^3.0.0"
