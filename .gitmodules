@@ -1,0 +1,3 @@
+[submodule "submodules/amazon-sumerian-hosts"]
+	path = submodules/amazon-sumerian-hosts
+	url = git@github.com:autonomys/amazon-sumerian-hosts.git

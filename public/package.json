@@ -2,7 +2,8 @@
 	"name": "unnamed-experiment",
 	"type": "module",
 	"dependencies": {
-		"@amazon-sumerian-hosts/three": "^2.0.6",
+		"@amazon-sumerian-hosts/core": "file:../submodules/amazon-sumerian-hosts/packages/amazon-sumerian-hosts-core",
+		"@amazon-sumerian-hosts/three": "file:../submodules/amazon-sumerian-hosts/packages/amazon-sumerian-hosts-three",
 		"aws-sdk": "^2.645.0",
 		"jquery": "^3.7.1",
 		"lodash-es": "^4.17.21",
