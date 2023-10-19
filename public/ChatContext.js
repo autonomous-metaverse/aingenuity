@@ -8,20 +8,6 @@ if (Meteor.isServer) {
 		if (!Meteor.userId()) return []
 		return ChatContext.find()
 	})
-	// Remove inactive user states after ~10 seconds of inactivity so that they
-	// no longer appear in the world.
-	// TODO: This is currently based on interaction. Instead we can base it on a
-	// heartbeat.
-	setInterval(
-		Meteor.bindEnvironment(() => {
-			const states = /** @type {ChatContextDocument[]} */ (ChatContext.find().fetch())
-
-			for (const state of states) {
-				if (Date.now() - state.t > 10_000) ChatContext.remove({ _id: state._id })
-			}
-		}),
-		1_000,
-	)
 } else {
 	Meteor.subscribe('ChatContext')
 }
