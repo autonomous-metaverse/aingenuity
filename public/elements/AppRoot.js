@@ -100,14 +100,14 @@ class AppRoot extends HTMLElement {
 		})
 
 		// Increment rotation by a small number of degrees every frame.
-		const box = this.shadowRoot?.querySelector('lume-box')
+		const box = /** @type {Box} */ (this.shadowRoot?.querySelector('lume-box'))
 		box.rotation = (x, y, z) => [x, y + 0.2, z]
 
 		// Move the sphere around in a circle based on time.
-		const sphere = this.shadowRoot?.querySelector('lume-sphere')
+		const sphere = /** @type {Sphere} */ (this.shadowRoot?.querySelector('lume-sphere'))
 		sphere.position = (x, y, z, t) => [0.1 * Math.sin(t * 0.005), y, 0.1 * Math.cos(t * 0.005)]
 
-		const sphereContainer = this.shadowRoot?.getElementById('sphereContainer')
+		const sphereContainer = /** @type {Element3D} */ (this.shadowRoot?.getElementById('sphereContainer'))
 		sphereContainer.position = (x, y, z, t) => [x, y, 0.8 * Math.cos(t * 0.001)]
 
 		// Wait for Meteor auth and API to be ready.
