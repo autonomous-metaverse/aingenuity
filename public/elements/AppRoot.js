@@ -53,6 +53,8 @@ const speakers = new Map([
 	['Alien', undefined],
 ])
 
+const initialCameraLocation = { x: 0, z: 0 }
+
 class AppRoot extends HTMLElement {
 	state = createMutable({
 		/** @type {PlayerStateDocument[]} */
@@ -79,8 +81,7 @@ class AppRoot extends HTMLElement {
 		// targetY: 0,
 
 		/** @type {number} */
-		targetZ: 2,
-
+		targetZ: initialCameraLocation.z,
 	})
 
 	constructor() {
@@ -511,7 +512,7 @@ class AppRoot extends HTMLElement {
 								*/
 							}
 
-							<lume-element3d position=${[0, -standingPlayerHeight, 2]}>
+							<lume-element3d position=${[initialCameraLocation.x, -standingPlayerHeight, initialCameraLocation.z]}>
 								<lume-perspective-camera active innerHTML="<p>test</p>"></lume-perspective-camera>
 							</lume-element3d>
 
