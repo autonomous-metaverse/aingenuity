@@ -1,6 +1,7 @@
 import { Meteor } from 'meteor/meteor'
 import { Mongo } from 'meteor/mongo'
 
+/** @type {Mongo.Collection<PlayerStateDocument>} */
 export const PlayerStates = new Mongo.Collection('PlayerStates')
 
 if (Meteor.isServer) {
