@@ -71,6 +71,16 @@ class AppRoot extends HTMLElement {
 
 		/** @type {boolean | false} */
 		isFocused: false,
+
+		/** @type {number} */
+		targetX: 0,
+
+		// /** @type {number} */
+		// targetY: 0,
+
+		/** @type {number} */
+		targetZ: 2,
+
 	})
 
 	constructor() {
@@ -333,6 +343,8 @@ class AppRoot extends HTMLElement {
 
 	setupControls() {
 		document.addEventListener('keydown', event => {
+
+			
 			//return early if focused
 			if (this.state.isFocused) {
 				return
@@ -341,6 +353,23 @@ class AppRoot extends HTMLElement {
 			this.downKeys.add(event.code)
 
 			if (this.downKeys.has('Space')) this.triggerJump()
+
+			// if (this.downKeys.has('KeyW')) {
+			// 	this.state.targetX += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+			// 	this.state.targetZ += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+			// }
+			// if (this.downKeys.has('KeyS')) {
+			// 	this.state.targetX -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+			// 	this.state.targetZ -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+			// }
+			// if (this.downKeys.has('KeyA')) {
+			// 	this.state.targetX += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+			// 	this.state.targetZ += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+			// }
+			// if (this.downKeys.has('KeyD')) {
+			// 	this.state.targetX -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+			// 	this.state.targetZ -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+			// }
 
 			if (this.downKeys.has('ShiftLeft')) {
 				//start crouch
@@ -363,23 +392,41 @@ class AppRoot extends HTMLElement {
 		const loop = () => {
 			const speed = this.downKeys.has('ShiftLeft') ? 0.02 : 0.04
 			cameraRoot.position.y += (this.state.targetPlayerHeight - cameraRoot.position.y) * 0.1
+			cameraRoot.position.x += (this.state.targetX - cameraRoot.position.x) * 0.05
+			cameraRoot.position.z += (this.state.targetZ - cameraRoot.position.z) * 0.05
+
+			//https://docs.lume.io/api/xyz-values/XYZValues
+			//Object.assign(obj, {x:1, y:2, z:3})
 
 			if (this.downKeys.has('KeyW')) {
-				cameraRoot.position.x += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-				cameraRoot.position.z += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+				//smaller smaller movement to larger movements to make it feel more natural, acceleration
+				this.state.targetX += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.targetZ += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 			}
 			if (this.downKeys.has('KeyS')) {
-				cameraRoot.position.x -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-				cameraRoot.position.z -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.targetX -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.targetZ -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 			}
 			if (this.downKeys.has('KeyA')) {
-				cameraRoot.position.x += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-				cameraRoot.position.z += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.targetX += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.targetZ += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 			}
 			if (this.downKeys.has('KeyD')) {
-				cameraRoot.position.x -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-				cameraRoot.position.z -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.targetX -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.targetZ -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 			}
+			// if (this.downKeys.has('KeyS')) {
+			// 	cameraRoot.position.x -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+			// 	cameraRoot.position.z -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+			// }
+			// if (this.downKeys.has('KeyA')) {
+			// 	cameraRoot.position.x += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+			// 	cameraRoot.position.z += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+			// }
+			// if (this.downKeys.has('KeyD')) {
+			// 	cameraRoot.position.x -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+			// 	cameraRoot.position.z -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+			// }
 		}
 
 		Motor.addRenderTask(loop)
