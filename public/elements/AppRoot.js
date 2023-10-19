@@ -53,7 +53,7 @@ const speakers = new Map([
 	['Alien', undefined],
 ])
 
-const initialCameraLocation = { x: 0, z: 0 }
+const initialCameraLocation = { x: 0, z: 2 }
 
 class AppRoot extends HTMLElement {
 	state = createMutable({
