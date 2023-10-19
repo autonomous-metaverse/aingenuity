@@ -354,23 +354,6 @@ class AppRoot extends HTMLElement {
 
 			if (this.downKeys.has('Space')) this.triggerJump()
 
-			// if (this.downKeys.has('KeyW')) {
-			// 	this.state.targetX += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-			// 	this.state.targetZ += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-			// }
-			// if (this.downKeys.has('KeyS')) {
-			// 	this.state.targetX -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-			// 	this.state.targetZ -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-			// }
-			// if (this.downKeys.has('KeyA')) {
-			// 	this.state.targetX += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-			// 	this.state.targetZ += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-			// }
-			// if (this.downKeys.has('KeyD')) {
-			// 	this.state.targetX -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-			// 	this.state.targetZ -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-			// }
-
 			if (this.downKeys.has('ShiftLeft')) {
 				//start crouch
 				this.state.targetPlayerHeight = -crouchingPlayerHeight
@@ -415,18 +398,6 @@ class AppRoot extends HTMLElement {
 				this.state.targetX -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 				this.state.targetZ -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 			}
-			// if (this.downKeys.has('KeyS')) {
-			// 	cameraRoot.position.x -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-			// 	cameraRoot.position.z -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-			// }
-			// if (this.downKeys.has('KeyA')) {
-			// 	cameraRoot.position.x += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-			// 	cameraRoot.position.z += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-			// }
-			// if (this.downKeys.has('KeyD')) {
-			// 	cameraRoot.position.x -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-			// 	cameraRoot.position.z -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-			// }
 		}
 
 		Motor.addRenderTask(loop)
