@@ -1,0 +1,8 @@
+Model Information:
+* title:	Personal Office
+* source:	https://sketchfab.com/3d-models/personal-office-fb2319942a6d49fa9adf1bc7f7d3aa84
+* author:	Janis Zeps (https://sketchfab.com/zeps9001)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works

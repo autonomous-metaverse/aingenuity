@@ -66,7 +66,7 @@ const speakers = new Map([
 	['Alien', undefined],
 ])
 
-const initialCameraLocation = { x: 0, z: 2 }
+const initialCamLocation = { x: 1, z: 1 }
 
 export class AppRoot extends HTMLElement {
 	state = createMutable({
@@ -85,13 +85,10 @@ export class AppRoot extends HTMLElement {
 		targetPlayerHeight: -standingPlayerHeight,
 
 		/** @type {number} */
-		targetX: 0,
-
-		// /** @type {number} */
-		// targetY: 0,
+		camTargetX: initialCamLocation.x,
 
 		/** @type {number} */
-		targetZ: initialCameraLocation.z,
+		camTargetZ: initialCamLocation.z,
 	})
 
 	constructor() {
@@ -169,19 +166,19 @@ export class AppRoot extends HTMLElement {
 		// Set up the scene and host
 		const { scene, camera, clock } = this.createSumerianContainer()
 		const {
-			character: character1,
+			character: character1, // human
 			clips: clips1,
 			bindPoseOffset: bindPoseOffset1,
 		} = await this.loadCharacter(scene, characterFile1, animationPath1, animationFiles)
 		const {
-			character: character2,
+			character: character2, // little monster
 			clips: clips2,
 			bindPoseOffset: bindPoseOffset2,
 		} = await this.loadCharacter(scene, characterFile2, animationPath2, animationFiles)
 
-		character1.position.set(1.25, 0, 0)
-		character1.rotateY(-0.5)
-		character2.position.set(-0.5, 0, 0)
+		character1.position.set(0.8, 0, 0)
+		character1.rotateY(0.5)
+		character2.position.set(-6.5, 0, 0) // positioned outside of the room, hidden for now.
 		character2.rotateY(0.5)
 
 		// Find the joints defined by name
@@ -388,28 +385,28 @@ export class AppRoot extends HTMLElement {
 		const loop = () => {
 			const speed = this.downKeys.has('ShiftLeft') ? 0.02 : 0.04
 			cameraRoot.position.y += (this.state.targetPlayerHeight - cameraRoot.position.y) * 0.1
-			cameraRoot.position.x += (this.state.targetX - cameraRoot.position.x) * 0.05
-			cameraRoot.position.z += (this.state.targetZ - cameraRoot.position.z) * 0.05
+			cameraRoot.position.x += (this.state.camTargetX - cameraRoot.position.x) * 0.05
+			cameraRoot.position.z += (this.state.camTargetZ - cameraRoot.position.z) * 0.05
 
 			//https://docs.lume.io/api/xyz-values/XYZValues
 			//Object.assign(obj, {x:1, y:2, z:3})
 
 			if (this.downKeys.has('KeyW')) {
 				//smaller smaller movement to larger movements to make it feel more natural, acceleration
-				this.state.targetX += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-				this.state.targetZ += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.camTargetX += speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.camTargetZ += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 			}
 			if (this.downKeys.has('KeyS')) {
-				this.state.targetX -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
-				this.state.targetZ -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.camTargetX -= speed * -Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.camTargetZ -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
 			}
 			if (this.downKeys.has('KeyA')) {
-				this.state.targetX += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-				this.state.targetZ += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.camTargetX += speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.camTargetZ += speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 			}
 			if (this.downKeys.has('KeyD')) {
-				this.state.targetX -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
-				this.state.targetZ -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.camTargetX -= speed * -Math.cos(cameraRoot.rotation.y * (Math.PI / 180))
+				this.state.camTargetZ -= speed * Math.sin(cameraRoot.rotation.y * (Math.PI / 180))
 			}
 		}
 
@@ -494,7 +491,7 @@ export class AppRoot extends HTMLElement {
 						vr="true"
 						background-color="#33334d"
 						background-opacity="1"
-						fog-mode="linear"
+						fog-mode="none"
 						fog-color="#33334d"
 						fog-near="0"
 						fog-far="10"
@@ -518,7 +515,7 @@ export class AppRoot extends HTMLElement {
 								*/
 							}
 
-							<lume-element3d position=${[initialCameraLocation.x, -standingPlayerHeight, initialCameraLocation.z]}>
+							<lume-element3d position=${[initialCamLocation.x, -standingPlayerHeight, initialCamLocation.z]}>
 								<lume-perspective-camera active innerHTML="<p>test</p>"></lume-perspective-camera>
 							</lume-element3d>
 
@@ -543,15 +540,18 @@ export class AppRoot extends HTMLElement {
 								shadow-camera-far="40"
 							></lume-directional-light>
 
+							<!-- Office room model -->
+							<lume-gltf-model src="/assets/models/personal_office/scene.gltf"></lume-gltf-model>
+
 							<lume-box
-								position="-2"
+								position="-6"
 								rotation="0 -30"
 								size="0.5 0.5 0.5"
 								mount-point="0.5 1 0.5"
 								color="pink"
 							></lume-box>
 
-							<lume-element3d id="sphereContainer" position="2">
+							<lume-element3d id="sphereContainer" position="6">
 								<lume-sphere size="0.5 0.5 0.5" mount-point="0.5 1 0.5" color="skyblue"></lume-sphere>
 
 								<lume-sphere
