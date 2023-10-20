@@ -1,12 +1,14 @@
 import { Meteor } from 'meteor/meteor'
 import { Mongo } from 'meteor/mongo'
 
+/** @type {Mongo.Collection<ChatContextDocument>} */
 export const ChatContext = new Mongo.Collection('ChatContext')
 
 if (Meteor.isServer) {
 	Meteor.publish('ChatContext', () => {
-		if (!Meteor.userId()) return []
-		return ChatContext.find()
+		const userId = Meteor.userId()
+		if (!userId) return []
+		return ChatContext.find({ userId })
 	})
 } else {
 	Meteor.subscribe('ChatContext')
@@ -14,8 +16,10 @@ if (Meteor.isServer) {
 
 /**
  * @typedef {{
- *   _msg: string
- *   _response: string
+ *   userId: string,
+ *   msg: string
+ *   response: string
+ *   t: number
  * }} ChatContext
  */
 

@@ -6,11 +6,24 @@ import { Meteor } from 'meteor/meteor'
 import { Tracker } from 'meteor/tracker'
 import { Blaze } from 'meteor/blaze'
 import { Template } from 'meteor/templating'
-import { Element3D, Index, Motor, PerspectiveCamera, Scene, createEffect, defineElements, html, element } from 'lume'
+import {
+	Element3D,
+	Index,
+	Motor,
+	PerspectiveCamera,
+	Scene,
+	createEffect,
+	defineElements,
+	html,
+	element,
+	Sphere,
+	Box,
+} from 'lume'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import throttle from 'lodash-es/throttle.js'
 import { Recorder } from '../audio.js'
 import { PlayerStates } from '../PlayerStates.js'
+import { UiOverlay } from './UiOverlay.js'
 
 /////////////////////////////////
 
@@ -55,7 +68,7 @@ const speakers = new Map([
 
 const initialCameraLocation = { x: 0, z: 2 }
 
-class AppRoot extends HTMLElement {
+export class AppRoot extends HTMLElement {
 	state = createMutable({
 		/** @type {PlayerStateDocument[]} */
 		playerStates: [],
@@ -70,9 +83,6 @@ class AppRoot extends HTMLElement {
 
 		/** @type {number} */
 		targetPlayerHeight: -standingPlayerHeight,
-
-		/** @type {boolean | false} */
-		isFocused: false,
 
 		/** @type {number} */
 		targetX: 0,
@@ -255,9 +265,9 @@ class AppRoot extends HTMLElement {
 		HOST.aws.TextToSpeechFeature.listenTo(HOST.aws.TextToSpeechFeature.EVENTS.pause, onStopSpeech)
 		HOST.aws.TextToSpeechFeature.listenTo(HOST.aws.TextToSpeechFeature.EVENTS.stop, onStopSpeech)
 
-		// Hide the load screen and show the text input
-		this.shadowRoot.getElementById('ui').classList.remove('hidden')
-		this.shadowRoot.getElementById('loadScreen').classList.add('hidden')
+		// Hide the load screen and show the UI
+		this.uiOverlay.classList.remove('hidden')
+		this.loadScreen.classList.add('hidden')
 
 		try {
 			await speechInit
@@ -347,10 +357,8 @@ class AppRoot extends HTMLElement {
 
 	setupControls() {
 		document.addEventListener('keydown', event => {
-
-			
 			//return early if focused
-			if (this.state.isFocused) {
+			if (this.uiOverlay.state.isFocused) {
 				return
 			}
 
@@ -363,6 +371,7 @@ class AppRoot extends HTMLElement {
 				this.state.targetPlayerHeight = -crouchingPlayerHeight
 			}
 		})
+
 		document.addEventListener('keyup', event => {
 			this.downKeys.delete(event.code)
 
@@ -408,35 +417,22 @@ class AppRoot extends HTMLElement {
 
 		let pointers = new Set()
 
-		this.addEventListener('pointerdown', event => {
+		this.lumeScene.addEventListener('pointerdown', event => {
 			if (pointers.size > 1) return // just one pointer for now
 			pointers.add(event.pointerId)
+			this.lumeScene.setPointerCapture(event.pointerId)
 		})
-		this.addEventListener('pointermove', event => {
+		this.lumeScene.addEventListener('pointermove', event => {
 			if (!pointers.has(event.pointerId)) return // just one pointer for now
 
 			cameraRoot.rotation.y -= event.movementX * 0.3
 			camera.rotation.x += event.movementY * 0.3
 		})
-		this.addEventListener('pointerup', event => {
+		this.lumeScene.addEventListener('pointerup', event => {
 			if (!pointers.has(event.pointerId)) return // just one pointer for now
 			pointers.delete(event.pointerId)
+			this.lumeScene.releasePointerCapture(event.pointerId)
 		})
-	}
-
-	/** @type {HTMLInputElement} */
-	input
-
-	sendMessage = e => {
-		e.preventDefault()
-
-		this.controlSpeech('stop')
-
-		Meteor.call('sendMessage', this.input.value, (error, result) => {
-			if (error) throw error
-			this.textToSpeech(result)
-		})
-		this.input.value = ''
 	}
 
 	textToSpeech(text) {
@@ -461,6 +457,15 @@ class AppRoot extends HTMLElement {
 		})
 	}
 
+	/** @type {Scene} */
+	lumeScene
+
+	/** @type {UiOverlay} */
+	uiOverlay
+
+	/** @type {HTMLDivElement} */
+	loadScreen
+
 	makeDOM() {
 		/** @type {HTMLDivElement} */
 		let speakContent
@@ -483,6 +488,7 @@ class AppRoot extends HTMLElement {
 			...html`
 				<div id="lume">
 					<lume-scene
+						ref=${el => (this.lumeScene = el)}
 						webgl
 						enable-css="${cssTransformsForDebug}"
 						vr="true"
@@ -568,53 +574,40 @@ class AppRoot extends HTMLElement {
 					</lume-scene>
 				</div>
 
-				<div id="ui">
+				<ui-overlay
+					id="uiOverlay"
+					ref=${el => (this.uiOverlay = el)}
+					classList="hidden"
+					onClickRecord=${this.recordAndSendAudio}
+				>
+					<slot slot="login"></slot>
+				</ui-overlay>
+
+				${'' /* Text to speech controls */}
+				<div id="textToSpeech" class="hidden">
+					<button class="tab current">Luke</button>
+					<button class="tab">Alien</button>
+					<div ref=${el => (speakContent = el)}></div>
 					<div>
-						<div>Log in to chat:</div>
-
-						<slot>${'' /* The loginBox gets slotted here from light DOM */}</slot>
-
-						<form onsubmit=${this.sendMessage} style=${() => (this.state.user ? '' : 'display: none')}>
-							<input
-								ref=${el => (this.input = el)}
-								type="text"
-								placeholder="Write message, hit enter."
-								onfocus=${() => (this.state.isFocused = true)}
-								onblur=${() => (this.state.isFocused = false)}
-							/>
-						</form>
-
-						<div>${() => this.state.response}</div>
-
-						<button onclick=${this.recordAndSendAudio}>record</button>
+						<button id="play" class="speechButton">Play</button>
+						<button id="pause" class="speechButton">Pause</button>
+						<button id="resume" class="speechButton">Resume</button>
+						<button id="stop" class="speechButton">Stop</button>
 					</div>
-
-					${'' /*Text to speech controls*/}
-					<div id="textToSpeech" class="hidden">
-						<button class="tab current">Luke</button>
-						<button class="tab">Alien</button>
-						<div ref=${el => (speakContent = el)}></div>
-						<div>
-							<button id="play" class="speechButton">Play</button>
-							<button id="pause" class="speechButton">Pause</button>
-							<button id="resume" class="speechButton">Resume</button>
-							<button id="stop" class="speechButton">Stop</button>
-						</div>
-						<div>
-							<button id="gestures" class="gestureButton">Generate Gestures</button>
-						</div>
-						<div>
-							<select id="emotes" class="gestureButton"></select>
-						</div>
-						<div>
-							<button id="playEmote" class="gestureButton">Play Emote</button>
-						</div>
+					<div>
+						<button id="gestures" class="gestureButton">Generate Gestures</button>
+					</div>
+					<div>
+						<select id="emotes" class="gestureButton"></select>
+					</div>
+					<div>
+						<button id="playEmote" class="gestureButton">Play Emote</button>
 					</div>
 				</div>
 
 				${'' /* loading screen ///////////////////////////////////////////////////////////////*/}
 
-				<div id="loadScreen">
+				<div id="loadScreen" ref=${el => (this.loadScreen = el)}>
 					<div id="loader"></div>
 				</div>
 
@@ -622,9 +615,13 @@ class AppRoot extends HTMLElement {
 			`,
 		)
 
+		// This is the original UI for controlling speech. We hide it, but we
+		// use it to trigger the Sumerian code exactly as in the original
+		// example. We could clean this up, but for now it works.
+		//
 		// Add this via innerHTML because Solid.js html template tag has some issues parsing this particular HTML.
 		speakContent.innerHTML = /*html*/ `
-							<textarea autofocus size="23" type="text" class="textEntry Luke">
+			<textarea autofocus size="23" type="text" class="textEntry Luke">
 <speak>
 	<amazon:domain name="conversational">
 		Hello, my name is Luke. I used to only be a host inside Amazon Sumerian, but
@@ -634,9 +631,8 @@ class AppRoot extends HTMLElement {
 		my friend and I here are in three js.
 	</amazon:domain>
 </speak>
-</textarea
-							>
-							<textarea autofocus size="23" type="text" class="textEntry Alien">
+</textarea>
+			<textarea autofocus size="23" type="text" class="textEntry Alien">
 <speak>
 	Hi there! As you can see I'm set up to be a host too, although I don't use
 	the same type of skeleton as any of the original Amazon Sumerian hosts. With
@@ -644,8 +640,7 @@ class AppRoot extends HTMLElement {
 	character you'd like. I'm excited to see what kinds of interesting host
 	characters you'll bring to life!
 </speak>
-</textarea
-							>
+</textarea>
 		`
 
 		style.innerHTML = /*html*/ `
@@ -704,13 +699,16 @@ class AppRoot extends HTMLElement {
 					opacity: 1;
 				}
 
-				#ui {
+				#uiOverlay {
 					position: absolute;
 					top: 10px;
 					left: 10px;
+					/* bottom: 10px; */
+					box-sizing: border-box;
+					height: calc(100% - 20px);
+					width: 300px;
 					border-radius: 10px;
 					padding: 10px;
-					background: rgba(0, 0, 0, 0.8);
 				}
 
 				#loadScreen {
@@ -772,8 +770,6 @@ class AppRoot extends HTMLElement {
 		// Sumerian code puts its content inside this.
 		const scene = new THREE.Group()
 
-		this.lumeScene = /** @type {Scene} */ (this.shadowRoot?.querySelector('lume-scene'))
-
 		// Render the Sumerian content inside of the Lume scene.
 		this.lumeScene.three.children.push(scene)
 
@@ -787,7 +783,7 @@ class AppRoot extends HTMLElement {
 		hemiLight.intensity = 0.6
 		scene.add(hemiLight)
 
-		const lumeCamera = this.lumeScene?.camera.three
+		const lumeCamera = this.lumeScene.camera.three
 
 		// The Sumerian code will have the characters automatically lookAt the
 		// `camera` that is specified here.
