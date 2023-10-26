@@ -541,7 +541,10 @@ export class AppRoot extends HTMLElement {
 							></lume-directional-light>
 
 							<!-- Office room model -->
-							<lume-gltf-model src="/assets/models/personal_office/scene.gltf"></lume-gltf-model>
+							<!-- lume-gltf-model src="/assets/models/personal_office/scene.gltf"></lume-gltf-model -->
+							
+							<!-- Living room model, move model down, scale model down-->
+							<lume-gltf-model src="/assets/models/simple_modern_living_room/scene.gltf" scale="0.3 0.3 0.3" position="0 0.18 0"></lume-gltf-model>
 
 							<lume-box
 								position="-6"
