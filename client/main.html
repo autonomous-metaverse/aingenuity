@@ -45,18 +45,18 @@
 				"@amazon-sumerian-hosts/core": "/node_modules/@amazon-sumerian-hosts/core/src/core/index.js",
 				"@amazon-sumerian-hosts/three": "/node_modules/@amazon-sumerian-hosts/three/src/three.js/index.js",
 
-				"meteor/meteor": "/modules/meteor.js",
-				"meteor/tracker": "/modules/meteor.js",
-				"meteor/blaze": "/modules/meteor.js",
-				"meteor/templating": "/modules/meteor.js",
-				"meteor/mongo": "/modules/meteor.js"
+				"meteor/meteor": "/meteor-packages.js",
+				"meteor/tracker": "/meteor-packages.js",
+				"meteor/blaze": "/meteor-packages.js",
+				"meteor/templating": "/meteor-packages.js",
+				"meteor/mongo": "/meteor-packages.js"
 			}
 		}
 	</script>
 </head>
 
 <body>
-	<noscript>This app requires JavaScript</noscript>
+	<noscript>The world literally can't run without JavaScript.</noscript>
 
 	<app-root></app-root>
 
@@ -64,6 +64,7 @@
 		import './elements/AppRoot.js'
 	</script>
 
+	<!-- The purpose of this is to show errors in the UI in case of unable to being able to connect devtools. -->
 	<div id="debug">
 		<style>
 			#debug {

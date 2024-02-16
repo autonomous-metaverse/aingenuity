@@ -117,6 +117,9 @@ export class AppRoot extends HTMLElement {
 		const sphereContainer = /** @type {Element3D} */ (this.shadowRoot?.getElementById('sphereContainer'))
 		sphereContainer.position = (x, y, z, t) => [x, y, 0.8 * Math.cos(t * 0.001)]
 
+		const room = this.shadowRoot.querySelector('#room')
+		const roomLoaded = new Promise(resolve => room.on('MODEL_LOAD', resolve))
+
 		// Wait for Meteor auth and API to be ready.
 		await new Promise(r => Meteor.startup(r))
 
@@ -165,16 +168,40 @@ export class AppRoot extends HTMLElement {
 
 		// Set up the scene and host
 		const { scene, camera, clock } = this.createSumerianContainer()
-		const {
-			character: character1, // human
-			clips: clips1,
-			bindPoseOffset: bindPoseOffset1,
-		} = await this.loadCharacter(scene, characterFile1, animationPath1, animationFiles)
-		const {
-			character: character2, // little monster
-			clips: clips2,
-			bindPoseOffset: bindPoseOffset2,
-		} = await this.loadCharacter(scene, characterFile2, animationPath2, animationFiles)
+
+		const [
+			{
+				character: character1, // human
+				clips: clips1,
+				bindPoseOffset: bindPoseOffset1,
+			},
+			{
+				character: character2, // little monster
+				clips: clips2,
+				bindPoseOffset: bindPoseOffset2,
+			},
+			gestureConfig1,
+			gestureConfig2,
+			poiConfig1,
+			poiConfig2,
+		] = await Promise.all([
+			this.loadCharacter(scene, characterFile1, animationPath1, animationFiles),
+			this.loadCharacter(scene, characterFile2, animationPath2, animationFiles),
+			// Read the gesture config file. This file contains options for splitting up
+			// each animation in gestures.glb into 3 sub-animations and initializing them
+			// as a QueueState animation.
+			fetch(`${animationPath1}/${gestureConfigFile}`).then(response => response.json()),
+			fetch(`${animationPath2}/${gestureConfigFile}`).then(response => response.json()),
+			// Read the point of interest config file. This file contains options for
+			// creating Blend2dStates from look pose clips and initializing look layers
+			// on the PointOfInterestFeature.
+			fetch(`${animationPath1}/${poiConfigFile}`).then(response => response.json()),
+			fetch(`${animationPath2}/${poiConfigFile}`).then(response => response.json()),
+			roomLoaded,
+		])
+
+		disableFog(room.three)
+		disableFog(character1)
 
 		character1.position.set(0.8, 0, 0)
 		character1.rotateY(0.5)
@@ -186,18 +213,6 @@ export class AppRoot extends HTMLElement {
 		const audioAttach2 = character2.getObjectByName(audioAttachJoint2)
 		const lookTracker1 = character1.getObjectByName(lookJoint1)
 		const lookTracker2 = character2.getObjectByName(lookJoint2)
-
-		// Read the gesture config file. This file contains options for splitting up
-		// each animation in gestures.glb into 3 sub-animations and initializing them
-		// as a QueueState animation.
-		const gestureConfig1 = await fetch(`${animationPath1}/${gestureConfigFile}`).then(response => response.json())
-		const gestureConfig2 = await fetch(`${animationPath2}/${gestureConfigFile}`).then(response => response.json())
-
-		// Read the point of interest config file. This file contains options for
-		// creating Blend2dStates from look pose clips and initializing look layers
-		// on the PointOfInterestFeature.
-		const poiConfig1 = await fetch(`${animationPath1}/${poiConfigFile}`).then(response => response.json())
-		const poiConfig2 = await fetch(`${animationPath2}/${poiConfigFile}`).then(response => response.json())
 
 		const [idleClips1, lipsyncClips1, gestureClips1, emoteClips1, faceClips1, blinkClips1, poiClips1] = clips1
 		const host1 = this.createHost(
@@ -491,7 +506,7 @@ export class AppRoot extends HTMLElement {
 						vr="true"
 						background-color="#33334d"
 						background-opacity="1"
-						fog-mode="none"
+						fog-mode="linear"
 						fog-color="#33334d"
 						fog-near="0"
 						fog-far="10"
@@ -503,6 +518,8 @@ export class AppRoot extends HTMLElement {
 							*/
 						}
 						<lume-element3d align-point="0.5 0.5">
+							<lume-ambient-light intensity="0.5"></lume-ambient-light>
+
 							${
 								'' /*
 								<lume-camera-rig
@@ -540,8 +557,12 @@ export class AppRoot extends HTMLElement {
 								shadow-camera-far="40"
 							></lume-directional-light>
 
-							<!-- Office room model -->
-							<lume-gltf-model src="/assets/models/personal_office/scene.gltf"></lume-gltf-model>
+							<!-- Office room model from https://sketchfab.com/3d-models/personal-office-fb2319942a6d49fa9adf1bc7f7d3aa84 -->
+							<lume-gltf-model
+								id="room"
+								src="/assets/models/abandoned_vr_gallery/scene.gltf"
+								position="-5 0 10"
+							></lume-gltf-model>
 
 							<lume-box
 								position="-6"
@@ -562,6 +583,7 @@ export class AppRoot extends HTMLElement {
 								></lume-sphere>
 							</lume-element3d>
 
+							<!-- Ground -->
 							<lume-plane
 								has="physical-material"
 								metalness="0"
@@ -569,6 +591,7 @@ export class AppRoot extends HTMLElement {
 								size="100 100"
 								rotation="90"
 								mount-point="0.5 0.5"
+								position="0 0.01 0"
 							></lume-plane>
 						</lume-element3d>
 					</lume-scene>
@@ -720,8 +743,8 @@ export class AppRoot extends HTMLElement {
 					left: 0;
 					width: 100%;
 					height: 100%;
-					background-image: url('/assets/images/load_screen.png');
-					background-color: gray;
+					/* background-image: url('/assets/images/load_screen.png'); */
+					background-color: #33334d;
 					background-repeat: no-repeat;
 					background-attachment: fixed;
 					background-position: center;
@@ -730,9 +753,9 @@ export class AppRoot extends HTMLElement {
 				}
 
 				#loader {
-					border: 16px solid #3498db38;
+					border: 16px solid rgb(255 255 255 / 0.5);
 					border-radius: 50%;
-					border-top: 16px solid #3498db;
+					border-top: 16px solid rgb(255 255 255 / 0.8);
 					width: 120px;
 					height: 120px;
 					-webkit-animation: spin 2s linear infinite;
@@ -821,11 +844,11 @@ export class AppRoot extends HTMLElement {
 			}
 
 			// Cast shadows
-			character.traverse(object => {
-				if (object.isMesh) {
+			for (const object of nodes(character)) {
+				if (isMesh(object)) {
 					object.castShadow = true
 				}
-			})
+			}
 
 			return { character, bindPoseOffset }
 		})
@@ -1244,3 +1267,37 @@ export const PlayerAvatar = element('player-avatar')(
 		`
 	},
 )
+
+/** @param {THREE.Object3D} obj */
+function* nodes(obj) {
+	/** @type {THREE.Object3D[]} */
+	const nodes = []
+	obj.traverse(n => nodes.push(n))
+	yield* nodes
+}
+
+/** @param {THREE.Object3D} obj */
+function* materials(obj) {
+	for (const node of nodes(obj)) {
+		if (isMesh(node)) yield* Array.isArray(node.material) ? node.material : [node.material]
+	}
+}
+
+/**
+ * @param {THREE.Object3D} obj
+ * @returns {obj is THREE.Mesh}
+ */
+function isMesh(obj) {
+	return !!obj.material
+}
+
+/**
+ * @param {THREE.Object3D} obj
+ */
+function disableFog(obj) {
+	for (const material of materials(obj)) {
+		// @ts-expect-error
+		material.fog = false
+		material.needsUpdate = true
+	}
+}
