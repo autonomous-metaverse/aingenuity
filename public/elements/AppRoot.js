@@ -518,7 +518,7 @@ export class AppRoot extends HTMLElement {
 							*/
 						}
 						<lume-element3d align-point="0.5 0.5">
-							<lume-ambient-light intensity="0.5"></lume-ambient-light>
+							<!-- <lume-ambient-light intensity="0.5"></lume-ambient-light> -->
 
 							${
 								'' /*
@@ -557,11 +557,21 @@ export class AppRoot extends HTMLElement {
 								shadow-camera-far="40"
 							></lume-directional-light>
 
-							<!-- Office room model from https://sketchfab.com/3d-models/personal-office-fb2319942a6d49fa9adf1bc7f7d3aa84 -->
-							<lume-gltf-model
+							<!-- <lume-gltf-model
 								id="room"
 								src="/assets/models/abandoned_vr_gallery/scene.gltf"
 								position="-5 0 10"
+							></lume-gltf-model> -->
+
+							<!-- Office room model from https://sketchfab.com/3d-models/personal-office-fb2319942a6d49fa9adf1bc7f7d3aa84 -->
+							<!-- <lume-gltf-model src="/assets/models/personal_office/scene.gltf"></lume-gltf-model> -->
+
+							<!-- Living room model, move model down, scale model down-->
+							<lume-gltf-model
+								id="room"
+								src="/assets/models/simple_modern_living_room/scene.gltf"
+								scale="0.3 0.3 0.3"
+								position="0 0.18 0"
 							></lume-gltf-model>
 
 							<lume-box
